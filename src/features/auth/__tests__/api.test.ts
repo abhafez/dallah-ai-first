@@ -12,7 +12,7 @@ describe("Auth API with MSW", () => {
     it("should POST to /auth/login with credentials and return the response", async () => {
       const result = await loginApi(mockCredentials);
 
-      expect(result.token).toBe("mock-jwt-token-12345");
+      expect(result.token).toBe("d878cc925faf27582697aa88972f7f8c897c7d71f532dfbd0b941915d6e1e391");
       expect(result.user.email).toBe("test@example.com");
       expect(result.user.name).toBe("Mock Developer User");
     });

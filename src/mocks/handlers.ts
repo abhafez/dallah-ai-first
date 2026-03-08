@@ -154,7 +154,7 @@ export const handlers = [
       _mockIsAuthenticated = true;
       return HttpResponse.json({
         user: MOCK_USER,
-        token: "mock-jwt-token-12345",
+        token: "d878cc925faf27582697aa88972f7f8c897c7d71f532dfbd0b941915d6e1e391",
       });
     }
   ),
