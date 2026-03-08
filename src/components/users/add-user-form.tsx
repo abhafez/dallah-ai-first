@@ -11,7 +11,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  useFormField,
 } from "@/components/ui/form";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
@@ -35,15 +37,36 @@ import {
 } from "@/features/users/schemas";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { AxiosError } from "axios";
+import { toast } from "sonner";
+
+function TranslatedFormMessage({ className, ...props }: React.ComponentProps<"p">) {
+  const { error, formMessageId } = useFormField();
+  const t = useTranslations("AddUser");
+
+  const raw = error ? String(error?.message ?? "") : (props.children as string);
+  if (!raw) return null;
+
+  // If the message is a known translation key, translate it; otherwise show raw
+  const body = t.has(raw) ? t(raw) : raw;
+
+  return (
+    <p
+      data-slot="form-message"
+      id={formMessageId}
+      className={cn("text-destructive text-sm", className)}
+      {...props}
+    >
+      {body}
+    </p>
+  );
+}
 
 export function AddUserForm() {
   const t = useTranslations("AddUser");
   const locale = useLocale();
   const createUser = useCreateUser();
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Fetch lookup data from API
   const { data: languages, isLoading: languagesLoading } = useLanguages();
@@ -83,8 +106,6 @@ export function AddUserForm() {
   }
 
   function onSubmit(values: AddUserFormValues) {
-    setSuccessMessage(null);
-
     // Find the selected course to derive licence_type from its category
     const selectedCourse = courses?.find(
       (c) => c.dallah_course_code === values.course_code
@@ -107,7 +128,7 @@ export function AddUserForm() {
 
     createUser.mutate(payload, {
       onSuccess: () => {
-        setSuccessMessage(t("successMessage"));
+        toast.success(t("successMessage"));
         form.reset();
       },
     });
@@ -130,14 +151,6 @@ export function AddUserForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Success alert */}
-        {successMessage && (
-          <Alert variant="success">
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        )}
-
         {/* Error alert */}
         {errorMessage && (
           <Alert variant="destructive">
@@ -156,7 +169,7 @@ export function AddUserForm() {
               <FormControl>
                 <Input placeholder={t("namePlaceholder")} {...field} />
               </FormControl>
-              <FormMessage />
+              <TranslatedFormMessage />
             </FormItem>
           )}
         />
@@ -175,7 +188,7 @@ export function AddUserForm() {
                   placeholder={t("mobilePlaceholder")}
                 />
               </FormControl>
-              <FormMessage />
+              <TranslatedFormMessage />
             </FormItem>
           )}
         />
@@ -194,7 +207,7 @@ export function AddUserForm() {
                   {...field}
                 />
               </FormControl>
-              <FormMessage />
+              <TranslatedFormMessage />
             </FormItem>
           )}
         />
@@ -224,7 +237,7 @@ export function AddUserForm() {
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
+              <TranslatedFormMessage />
             </FormItem>
           )}
         />
@@ -254,7 +267,7 @@ export function AddUserForm() {
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
+              <TranslatedFormMessage />
             </FormItem>
           )}
         />
@@ -287,7 +300,7 @@ export function AddUserForm() {
                   ))}
                 </SelectContent>
               </Select>
-              <FormMessage />
+              <TranslatedFormMessage />
             </FormItem>
           )}
         />

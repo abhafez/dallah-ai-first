@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { MswProvider } from "@/providers/msw-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -72,6 +73,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {enableMsw ? <MswProvider>{appContent}</MswProvider> : appContent}
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   );

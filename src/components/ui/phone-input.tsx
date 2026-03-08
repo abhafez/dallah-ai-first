@@ -38,11 +38,12 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
   ({ className, value, onChange, placeholder, disabled, ...props }, ref) => {
     return (
       <PhoneInputPrimitive
-        international
         defaultCountry="SA"
+        countries={["SA"]}
+        withCountryCallingCode={false}
         value={(value as E164Number) || ""}
         onChange={(val) => onChange(val || "")}
-        placeholder={placeholder || "+966 5X XXX XXXX"}
+        placeholder={placeholder || "5X XXX XXXX"}
         disabled={disabled}
         inputComponent={CustomInput}
         className={cn("flex items-center gap-2", className)}
