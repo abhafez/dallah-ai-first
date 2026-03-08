@@ -48,7 +48,7 @@ export default async function RootLayout({
   // Determine direction based on locale
   const dir = locale === "ar" ? "rtl" : "ltr";
 
-  const isDev = process.env.NODE_ENV === "development";
+  const enableMsw = process.env.NEXT_PUBLIC_ENABLE_MSW === "true";
 
   const appContent = (
     <NextIntlClientProvider messages={messages}>
@@ -63,7 +63,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {isDev ? <MswProvider>{appContent}</MswProvider> : appContent}
+        {enableMsw ? <MswProvider>{appContent}</MswProvider> : appContent}
       </body>
     </html>
   );
