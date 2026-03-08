@@ -21,6 +21,9 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { Logo } from "@/components/layout/logo";
 
 interface NavItem {
   href: string;
@@ -80,8 +83,9 @@ export default function DashboardLayout({
   const sidebarContent = (
     <nav className="flex flex-col gap-1 p-4">
       <div className="mb-4 px-2">
-        <h2 className="text-lg font-bold tracking-tight">Dalla</h2>
-        <p className="text-xs text-muted-foreground">{t("adminPanel")}</p>
+        <h2 className="text-lg font-bold tracking-tight">
+          <Logo />
+        </h2>
       </div>
       <Separator className="mb-2" />
       {NAV_ITEMS.map((item) => (
@@ -160,7 +164,7 @@ export default function DashboardLayout({
           </Button>
           <h1 className="text-lg font-semibold">Dallah</h1>
         </header>
-
+        <Header />
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>

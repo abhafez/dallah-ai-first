@@ -56,7 +56,7 @@
     "errorMapping": "الدورة أو الفرع المحدد غير مُعد. يرجى التواصل مع الدعم.",
     "errorGeneral": "حدث خطأ. حاول مرة أخرى.",
     "nameRequired": "الاسم مطلوب",
-    "mobileInvalid": "يجب أن يكون رقم جوال سعودي صالح (+9665XXXXXXXX)",
+    "mobileInvalid": "يجب أن يكون رقم جوال سعودي صالح",
     "nationalIdInvalid": "يجب أن يكون رقم هوية مكون من 10 أرقام ويبدأ بـ 1 أو 2",
     "languageRequired": "لغة الدورة مطلوبة",
     "schoolRequired": "المدرسة مطلوبة",
