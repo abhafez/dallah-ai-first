@@ -1,0 +1,230 @@
+# Client Admin Dashboard — Phase 1 Implementation Plan
+
+## Background
+
+The project is a **Next.js 16** app with TailwindCSS, shadcn/ui, next-intl (en/ar), React Query, Axios, React Hook Form, Zod, and MSW. Currently, only the **Auth** feature is built (login/logout/getMe), with a placeholder dashboard page. We need to build the **6 core features** from the PRD.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **API Endpoints**: The PRD doesn't specify exact backend API endpoint paths. The plan assumes RESTful conventions (e.g., `POST /users`, `GET /users/search`, `POST /enrollments`, etc.). Please confirm or provide the actual middleware API spec if available.
+
+> [!IMPORTANT]
+> **Dropdown data for Language / Level / Vehicle**: The PRD mentions these as dropdowns. Are the options static (hardcoded) or fetched from the backend? I'll assume **static options for now** and can switch to API-fetched later.
+
+> [!IMPORTANT]
+> **Scope for today**: This is a large PRD. I recommend we **prioritize and scope what to build today**. My suggestion is below — please confirm or adjust.
+
+### Recommended Priority for Today
+
+| Priority | Feature | Rationale |
+|----------|---------|-----------|
+| 🥇 1 | Dashboard Layout & Navigation | Foundation for everything else |
+| 🥇 2 | Send Single User (form) | Core feature, exercises the full stack |
+| 🥈 3 | Send Bulk Users (CSV Upload) | Second most impactful feature |
+| 🥉 4 | Enrollment Management (search + CRUD) | Complex but critical |
+| 4 | Update User Profile | Relatively simple after enrollment search is built |
+| 5 | View Attendance | Read-only, simplest feature |
+
+---
+
+## Proposed Changes
+
+### Shared Types & Config
+
+#### [NEW] [types.ts](file:///home/hafez/aanaab/ai-first/src/features/users/types.ts)
+
+Shared TypeScript types used across all user/enrollment features:
+
+```typescript
+// User, CreateUserPayload, BulkUploadResult,
+// Enrollment, Course, Branch, AttendanceRecord,
+// Language/Level/Vehicle enums or constants
+```
+
+#### [NEW] [constants.ts](file:///home/hafez/aanaab/ai-first/src/features/users/constants.ts)
+
+Static dropdown options for Language, Level, and Vehicle (if not API-fetched).
+
+---
+
+### Dashboard Layout & Navigation
+
+#### [NEW] [layout.tsx](file:///home/hafez/aanaab/ai-first/src/app/[locale]/dashboard/layout.tsx)
+
+Dashboard shell layout with sidebar navigation containing links to:
+- **Add User** (`/dashboard/users/add`)
+- **Bulk Import** (`/dashboard/users/bulk`)
+- **Manage Enrollments** (`/dashboard/enrollments`)
+- **Attendance** (`/dashboard/attendance`)
+
+Uses a clean admin layout with a collapsible sidebar and header with user name + logout + language switcher.
+
+#### [MODIFY] [page.tsx](file:///home/hafez/aanaab/ai-first/src/app/[locale]/dashboard/page.tsx)
+
+Simplify to show a quick-action landing (cards linking to core features).
+
+#### New shadcn/ui components needed
+
+Will add these via shadcn CLI or manual copy:
+- **Card** — for dashboard landing cards
+- **Select** — for form dropdowns (Language, Level, Vehicle)
+- **Dialog** — for confirmation modals (delete enrollment)
+- **Alert** — for success/error notifications
+- **Textarea** — possibly for notes
+- **Badge** — for status indicators
+- **Separator** — for layout
+- **Sheet** — for mobile sidebar
+- **Tabs** — for enrollment management
+
+---
+
+### Feature: Send Single User
+
+#### [NEW] [api.ts](file:///home/hafez/aanaab/ai-first/src/features/users/api.ts)
+
+API functions: `createUserApi()`, `searchUsersApi()`, `updateUserApi()`, `bulkUploadUsersApi()`.
+
+#### [NEW] [queries.ts](file:///home/hafez/aanaab/ai-first/src/features/users/queries.ts)
+
+React Query hooks: `useCreateUser()`, `useSearchUsers()`, `useUpdateUser()`, `useBulkUploadUsers()`.
+
+#### [NEW] [schemas.ts](file:///home/hafez/aanaab/ai-first/src/features/users/schemas.ts)
+
+Zod validation schemas:
+- Saudi mobile validation (starts with `05`, 10 digits)
+- National ID validation (10 digits)
+- All fields mandatory
+
+#### [NEW] [page.tsx](file:///home/hafez/aanaab/ai-first/src/app/[locale]/dashboard/users/add/page.tsx)
+
+Add User form page with fields: Name, Mobile, National ID + dropdowns for Language, Level, Vehicle. Shows inline validation errors and API success/error messages.
+
+#### [NEW] [add-user-form.tsx](file:///home/hafez/aanaab/ai-first/src/components/users/add-user-form.tsx)
+
+The form component with React Hook Form + Zod resolver.
+
+---
+
+### Feature: Send Bulk Users (CSV Upload)
+
+#### [NEW] [page.tsx](file:///home/hafez/aanaab/ai-first/src/app/[locale]/dashboard/users/bulk/page.tsx)
+
+Bulk import page with:
+- CSV template download button
+- File upload dropzone
+- Processing results table (success/fail per row)
+- Error report download option
+
+#### [NEW] [csv-upload-form.tsx](file:///home/hafez/aanaab/ai-first/src/components/users/csv-upload-form.tsx)
+
+The upload component with client-side CSV parsing and validation before sending to API.
+
+---
+
+### Feature: Enrollment Management
+
+#### [NEW] [enrollments/api.ts](file:///home/hafez/aanaab/ai-first/src/features/enrollments/api.ts)
+
+API functions: `createEnrollmentApi()`, `deleteEnrollmentApi()`, `replaceEnrollmentApi()`, `getUserEnrollmentsApi()`.
+
+#### [NEW] [enrollments/queries.ts](file:///home/hafez/aanaab/ai-first/src/features/enrollments/queries.ts)
+
+React Query hooks for all enrollment CRUD operations.
+
+#### [NEW] [enrollments/types.ts](file:///home/hafez/aanaab/ai-first/src/features/enrollments/types.ts)
+
+Enrollment-specific types.
+
+#### [NEW] [page.tsx](file:///home/hafez/aanaab/ai-first/src/app/[locale]/dashboard/enrollments/page.tsx)
+
+Enrollment management page with:
+- User search bar (by name, mobile, or national ID)
+- User results list
+- Selected user's enrollments table
+- Action buttons: Create, Delete (with confirmation dialog), Replace
+
+---
+
+### Feature: Update User Profile
+
+#### [NEW] [page.tsx](file:///home/hafez/aanaab/ai-first/src/app/[locale]/dashboard/users/edit/page.tsx)
+
+User search → select → edit form with: name, national ID, mobile, language, branch. Enforces uniqueness for ID/mobile. This can share the user search component from Enrollment Management.
+
+---
+
+### Feature: View Attendance
+
+#### [NEW] [attendance/api.ts](file:///home/hafez/aanaab/ai-first/src/features/attendance/api.ts)
+
+API function: `getAttendanceApi()`.
+
+#### [NEW] [attendance/queries.ts](file:///home/hafez/aanaab/ai-first/src/features/attendance/queries.ts)
+
+React Query hook: `useAttendance()`.
+
+#### [NEW] [page.tsx](file:///home/hafez/aanaab/ai-first/src/app/[locale]/dashboard/attendance/page.tsx)
+
+Read-only table of users with course start status and dates, with a manual refresh button.
+
+---
+
+### MSW Mock Handlers
+
+#### [MODIFY] [handlers.ts](file:///home/hafez/aanaab/ai-first/src/mocks/handlers.ts)
+
+Add mock handlers for all new endpoints:
+- `POST /users` — create single user
+- `POST /users/bulk` — bulk upload
+- `GET /users/search?q=` — search users
+- `PUT /users/:id` — update user profile
+- `POST /enrollments` — create enrollment
+- `DELETE /enrollments/:id` — delete enrollment
+- `POST /enrollments/replace` — replace enrollment
+- `GET /attendance` — get attendance records
+
+---
+
+### i18n Messages
+
+#### [MODIFY] [en.json](file:///home/hafez/aanaab/ai-first/messages/en.json)
+
+Add translation keys for all new features (forms, labels, errors, success messages, navigation).
+
+#### [MODIFY] [ar.json](file:///home/hafez/aanaab/ai-first/messages/ar.json)
+
+Arabic translations for all new keys.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+
+**Unit tests** — run with `npm test` from `/home/hafez/aanaab/ai-first`:
+
+| Test File | What it covers |
+|-----------|---------------|
+| `src/features/users/__tests__/schemas.test.ts` | Zod validation for Saudi mobile, national ID, mandatory fields |
+| `src/features/users/__tests__/api.test.ts` | API function calls with mocked axios |
+| `src/features/enrollments/__tests__/api.test.ts` | Enrollment CRUD API calls |
+
+**E2E tests** — run with `npm run test:e2e` from `/home/hafez/aanaab/ai-first`:
+
+| Test File | What it covers |
+|-----------|---------------|
+| `e2e/add-user.spec.ts` | Full add-user form flow: fill, submit, success/error states |
+| `e2e/enrollment.spec.ts` | Search user → create/delete/replace enrollment |
+
+### Manual Verification
+
+1. **Start the dev server** (`npm run dev`), open `http://localhost:3000`
+2. **Login** with any credentials (MSW accepts all except `wrong@example.com`)
+3. **Dashboard**: Verify sidebar navigation shows all feature links
+4. **Add User**: Fill all fields, submit, verify success message. Try submitting with missing fields to see inline errors.
+5. **Bulk Import**: Download CSV template, fill it, upload, verify results table
+6. **Enrollment Management**: Search a user, create/delete/replace enrollment
+7. **Attendance**: Verify the table loads with mock data and refresh works

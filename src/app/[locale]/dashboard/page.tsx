@@ -1,40 +1,71 @@
 "use client";
 
-import { useAuth } from "@/providers/auth-provider";
-import { useLogout } from "@/features/auth/queries";
-import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
-import { LanguageSwitcher } from "@/components/language-switcher";
+import Link from "next/link";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { UserPlus, Upload, RefreshCcw, ClipboardList } from "lucide-react";
+
+const QUICK_ACTIONS = [
+  {
+    href: "/dashboard/users/add",
+    titleKey: "addUserTitle",
+    descKey: "addUserDesc",
+    icon: <UserPlus className="h-8 w-8 text-primary" />,
+  },
+  {
+    href: "/dashboard/users/bulk",
+    titleKey: "bulkImportTitle",
+    descKey: "bulkImportDesc",
+    icon: <Upload className="h-8 w-8 text-primary" />,
+  },
+  {
+    href: "/dashboard/enrollments",
+    titleKey: "enrollmentsTitle",
+    descKey: "enrollmentsDesc",
+    icon: <RefreshCcw className="h-8 w-8 text-primary" />,
+  },
+  {
+    href: "/dashboard/attendance",
+    titleKey: "attendanceTitle",
+    descKey: "attendanceDesc",
+    icon: <ClipboardList className="h-8 w-8 text-primary" />,
+  },
+];
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const logout = useLogout();
   const t = useTranslations("Dashboard");
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex items-center justify-between mb-8 pb-4 border-b">
-        <h1 className="text-3xl font-bold">{t("title")}</h1>
-        <div className="flex items-center gap-4">
-          <LanguageSwitcher />
-          <Button
-            variant="outline"
-            onClick={() => logout.mutate()}
-            disabled={logout.isPending}
-          >
-            {logout.isPending ? t("signingOut") : t("signOut")}
-          </Button>
-        </div>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
       </div>
 
-      {user && (
-        <p className="text-muted-foreground">
-          {t("welcomeBack")},{" "}
-          <span className="font-medium text-foreground">{user.name}</span>!
-        </p>
-      )}
-
-      {/* Dashboard content goes here */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {QUICK_ACTIONS.map((action) => (
+          <Link key={action.href} href={action.href}>
+            <Card className="cursor-pointer transition-shadow hover:shadow-md h-full">
+              <CardHeader className="flex flex-col items-center text-center gap-3">
+                {action.icon}
+                <div>
+                  <CardTitle className="text-base">
+                    {t(action.titleKey)}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {t(action.descKey)}
+                  </CardDescription>
+                </div>
+              </CardHeader>
+            </Card>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
