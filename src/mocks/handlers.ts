@@ -413,4 +413,45 @@ export const handlers = [
     await delay(500);
     return HttpResponse.json(MOCK_ATTENDANCE);
   }),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOOKUPS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  http.get(url("/languages"), async () => {
+    await delay(300);
+    return HttpResponse.json({
+      languages: [
+        { code: "1", name: "arabic", locale: "ar" },
+        { code: "2", name: "english", locale: "en" },
+        { code: "3", name: "ardu", locale: "ur" },
+        { code: "4", name: "hendi", locale: "hi" },
+      ],
+    });
+  }),
+
+  http.get(url("/courses"), async () => {
+    await delay(300);
+    return HttpResponse.json({
+      courses: [
+        { id: 1, course_name: "دليل تعليم القيادة النظري - متقدم (عربي)", dallah_course_code: "P6h", language: "arabic", category: "private" },
+        { id: 2, course_name: "Private 15 hours - Arabic", dallah_course_code: "P15h", language: "arabic", category: "private" },
+        { id: 3, course_name: "Private 30 hours - Arabic", dallah_course_code: "P30h", language: "arabic", category: "private" },
+        { id: 4, course_name: "Motor 6 hours - Arabic", dallah_course_code: "M6h", language: "arabic", category: "motor" },
+        { id: 5, course_name: "Private 6 hours - English", dallah_course_code: "P6h-en", language: "english", category: "private" },
+        { id: 6, course_name: "Public with License - Arabic", dallah_course_code: "PUB-L", language: "arabic", category: "public" },
+      ],
+    });
+  }),
+
+  http.get(url("/branches"), async () => {
+    await delay(300);
+    return HttpResponse.json({
+      branches: [
+        { id: 22, branch_id: 2432, branch_name: "مدرسة التخصصي", section_id: 798, section_name: "منطقة الرياض" },
+        { id: 23, branch_id: 2434, branch_name: "مدرسة جدة", section_id: 799, section_name: "منطقة مكة المكرمة" },
+        { id: 24, branch_id: 2433, branch_name: "مدرسة الطائف", section_id: 799, section_name: "منطقة مكة المكرمة" },
+      ],
+    });
+  }),
 ];

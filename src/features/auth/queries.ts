@@ -44,7 +44,6 @@ export function useLogin() {
       // Store in cookie for the Next.js middleware (non-httpOnly, SameSite)
       document.cookie = `auth_token=${token}; path=/; SameSite=Lax`;
       // Pre-populate the 'me' query so no extra fetch is needed
-      console.log(admin);
       queryClient.setQueryData<AuthUser>(authKeys.me(), admin);
       router.push("/dashboard");
     },

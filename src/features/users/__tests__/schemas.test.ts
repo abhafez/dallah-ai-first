@@ -9,7 +9,6 @@ describe("addUserSchema", () => {
       national_id: "1234567890",
       lang: "1",
       school_id: 1,
-      licence_type: "private",
       course_code: "P6",
     };
     const result = addUserSchema.safeParse(validData);
@@ -19,11 +18,10 @@ describe("addUserSchema", () => {
   it("should fail for an invalid Saudi mobile number", () => {
     const invalidData = {
       name: "Test User",
-      mobile: "0512345678", // Must start with +9665
+      mobile: "+966123", // Too short for Saudi
       national_id: "1234567890",
       lang: "1",
       school_id: 1,
-      licence_type: "private",
       course_code: "P6",
     };
     const result = addUserSchema.safeParse(invalidData);
@@ -40,7 +38,6 @@ describe("addUserSchema", () => {
       national_id: "3234567890", // Must start with 1 or 2
       lang: "1",
       school_id: 1,
-      licence_type: "private",
       course_code: "P6",
     };
     const result = addUserSchema.safeParse(invalidData);

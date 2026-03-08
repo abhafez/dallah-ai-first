@@ -8,6 +8,9 @@ import type {
   AttendanceRecord,
   CreateEnrollmentPayload,
   ReplaceEnrollmentPayload,
+  ApiLanguage,
+  ApiCourse,
+  ApiBranch,
 } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -93,4 +96,23 @@ export async function replaceEnrollmentApi(
 export async function getAttendanceApi(): Promise<AttendanceRecord[]> {
   const { data } = await axiosInstance.get<AttendanceRecord[]>("/attendance");
   return data;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Lookups (languages, courses, branches)
+// ──────────────────────────────────────────────────────────────────────────────
+
+export async function getLanguagesApi(): Promise<ApiLanguage[]> {
+  const { data } = await axiosInstance.get<{ languages: ApiLanguage[] }>("/languages");
+  return data.languages;
+}
+
+export async function getCoursesApi(): Promise<ApiCourse[]> {
+  const { data } = await axiosInstance.get<{ courses: ApiCourse[] }>("/courses");
+  return data.courses;
+}
+
+export async function getBranchesApi(): Promise<ApiBranch[]> {
+  const { data } = await axiosInstance.get<{ branches: ApiBranch[] }>("/branches");
+  return data.branches;
 }

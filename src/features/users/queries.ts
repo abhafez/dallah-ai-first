@@ -11,6 +11,9 @@ import {
   deleteEnrollmentApi,
   replaceEnrollmentApi,
   getAttendanceApi,
+  getLanguagesApi,
+  getCoursesApi,
+  getBranchesApi,
 } from "./api";
 import type {
   CreateUserPayload,
@@ -30,6 +33,12 @@ export const userKeys = {
 
 export const attendanceKeys = {
   all: ["attendance"] as const,
+};
+
+export const lookupKeys = {
+  languages: ["languages"] as const,
+  courses: ["courses"] as const,
+  branches: ["branches"] as const,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -129,5 +138,33 @@ export function useAttendance() {
   return useQuery({
     queryKey: attendanceKeys.all,
     queryFn: getAttendanceApi,
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Lookup hooks
+// ──────────────────────────────────────────────────────────────────────────────
+
+export function useLanguages() {
+  return useQuery({
+    queryKey: lookupKeys.languages,
+    queryFn: getLanguagesApi,
+    staleTime: Infinity,
+  });
+}
+
+export function useCourses() {
+  return useQuery({
+    queryKey: lookupKeys.courses,
+    queryFn: getCoursesApi,
+    staleTime: Infinity,
+  });
+}
+
+export function useBranches() {
+  return useQuery({
+    queryKey: lookupKeys.branches,
+    queryFn: getBranchesApi,
+    staleTime: Infinity,
   });
 }

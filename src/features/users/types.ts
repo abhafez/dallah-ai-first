@@ -105,6 +105,32 @@ export interface SearchUsersParams {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Lookup types (from API)
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface ApiLanguage {
+  code: string;       // "1", "2", "3", "4"
+  name: string;       // "arabic", "english", "ardu", "hendi"
+  locale: string;     // "ar", "en", "ur", "hi"
+}
+
+export interface ApiCourse {
+  id: number;
+  course_name: string;
+  dallah_course_code: string;
+  language: string;   // "arabic", "english", etc.
+  category: "private" | "motor" | "public";
+}
+
+export interface ApiBranch {
+  id: number;
+  branch_id: number;
+  branch_name: string;
+  section_id: number;
+  section_name: string;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Enums / union types for dropdowns
 // ──────────────────────────────────────────────────────────────────────────────
 

@@ -34,7 +34,7 @@ POST /api/v1/dallah/auth/login
 Request body:
 ```json
 {
-  "email": "ksaleh@gmail.com",
+  "email": "ksaleh@aanaab.com",
   "password": "Dallah@2026!"
 }
 ```
@@ -46,7 +46,7 @@ Success `200`:
   "admin": {
     "id": 1,
     "name": "K Saleh",
-    "email": "ksaleh@gmail.com",
+    "email": "ksaleh@aanaab.com",
     "role": "super_admin"
   }
 }
@@ -73,7 +73,7 @@ Success `200`:
   "admin": {
     "id": 1,
     "name": "K Saleh",
-    "email": "ksaleh@gmail.com",
+    "email": "ksaleh@aanaab.com",
     "role": "super_admin"
   }
 }
@@ -97,7 +97,7 @@ Response `200`:
     {
       "id": 1,
       "name": "K Saleh",
-      "email": "ksaleh@gmail.com",
+      "email": "ksaleh@aanaab.com",
       "role": "super_admin",
       "active": true,
       "created_at": "2026-03-08T11:55:58Z"
@@ -162,7 +162,24 @@ Error `422` (cannot deactivate self): `{ "error": "Cannot deactivate your own ac
 
 ## 3. Lookup Endpoints (Populate Dropdowns)
 
-Call these when the dashboard loads to populate dropdowns. Both work with JWT or static bearer.
+Call these when the dashboard loads to populate dropdowns. All work with JWT or static bearer.
+
+### List Languages
+```
+GET /api/v1/dallah/languages
+```
+Response `200`:
+```json
+{
+  "languages": [
+    { "code": "1", "name": "arabic",  "locale": "ar" },
+    { "code": "2", "name": "english", "locale": "en" },
+    { "code": "3", "name": "ardu",    "locale": "ur" },
+    { "code": "4", "name": "hendi",   "locale": "hi" }
+  ]
+}
+```
+Use `code` (the numeric string `"1"`, `"2"`, `"3"`, `"4"`) as the `lang` value in all user and enrollment requests.
 
 ### List Courses
 ```
@@ -174,15 +191,16 @@ Response `200`:
   "courses": [
     {
       "id": 1,
-      "course_name": "Private Driving - Arabic",
+      "course_name": "دليل تعليم القيادة النظري للمركبات  - مستوى متقدم (عربي)",
       "dallah_course_code": "P6h",
-      "language": "Arabic",
+      "language": "arabic",
       "category": "private"
     }
   ]
 }
 ```
-Use `dallah_course_code` + `language` + `category` when submitting enrollment requests.
+Use `dallah_course_code` when submitting user creation and enrollment requests.
+`category` maps to `licence_type`: `"private"` → `"private"`, `"motor"` → `"motor"`, `"public"` → `"public"`.
 
 ### List Branches
 ```
@@ -193,16 +211,29 @@ Response `200`:
 {
   "branches": [
     {
-      "id": 1,
-      "branch_id": 6,
-      "branch_name": "Riyadh",
-      "section_id": 10,
-      "section_name": "Central"
+      "id": 22,
+      "branch_id": 2432,
+      "branch_name": "مدرسة التخصصي",
+      "section_id": 798,
+      "section_name": "منطقة الرياض"
     }
   ]
 }
 ```
-Use `branch_id` as the `school_id` when creating users.
+> **Important:** Use the `dallah_school_id` (1–10) as `school_id` in user creation — **not** `branch_id`. The mapping is:
+
+| dallah_school_id | branch_name | branch_id |
+|---|---|---|
+| 1 | مدرسة جدة (Jeddah) | 2434 |
+| 2 | مدرسة الطائف (Taif) | 2433 |
+| 3 | مدرسة التخصصي (Riyadh) | 2432 |
+| 4 | مدرسة الخرج | 2426 |
+| 5 | مدرسة السلي | 2427 |
+| 6 | مدرسة المجمعة | 2428 |
+| 7 | مدرسة جازان | 2425 |
+| 8 | مدرسة شقراء | 2429 |
+| 9 | مدرسة وادي الدواسر | 2430 |
+| 10 | مدرسة الدوادمي | 2431 |
 
 ---
 
@@ -269,10 +300,12 @@ Request body:
 }
 ```
 
-Language codes: `"1"` = Arabic, `"2"` = English, `"3"` = Urdu, `"4"` = Hindi  
-Licence types: `"private"`, `"motor"`, `"public"`
+- `lang`: get the numeric code from `GET /languages` (e.g. `"1"` = Arabic)
+- `school_id`: use the `dallah_school_id` (1–10) from the branch table above
+- `dallah_course_code`: get from `GET /courses`
+- `licence_type`: `"private"`, `"motor"`, or `"public"`
 
-Success `201` — returns created user data.  
+Success `200` — returns created user data.
 Error `422` — returns `{ "error": "...", "details": [...] }`.
 
 ### Bulk Create Users (JSON)
@@ -290,12 +323,53 @@ Request body:
       "lang": "1",
       "school_id": 6,
       "courses": [{ "dallah_course_code": "P6h", "licence_type": "private", "lang": "1" }]
-    },
-    { "..." }
+    }
   ]
 }
 ```
 Max 100 users per request. Response includes per-user success/failure breakdown.
+
+### Bulk Create Users (CSV Upload)
+
+#### Download CSV Template
+```
+GET /api/v1/dallah/users/bulk_csv/template
+```
+Returns a downloadable `.csv` file with the correct headers and one example row. Show a "Download Template" button in the UI before the upload form.
+
+#### Upload CSV File
+```
+POST /api/v1/dallah/users/bulk_csv
+Content-Type: multipart/form-data
+```
+Form field: `file` → attach the CSV file.
+
+**CSV columns (all required):**
+
+| Column | Description | Example |
+|---|---|---|
+| `name` | Full name | Ahmed Ali |
+| `national_id` | 10-digit Saudi ID starting with 1 or 2 | 1234567890 |
+| `mobile` | Saudi mobile with country code | +966501234567 |
+| `lang` | Language code from `GET /languages` | 1 |
+| `school_id` | Branch `dallah_school_id` (1–10) | 6 |
+| `dallah_course_code` | Course code from `GET /courses` | P6h |
+| `licence_type` | `private`, `motor`, or `public` | private |
+
+Each row = one user + one course enrollment. Max 100 rows per upload.
+
+Success `200`:
+```json
+{
+  "message": "Bulk user enrollment processed",
+  "summary": { "total": 3, "successful": 2, "failed": 1 },
+  "results": [ { "national_id": "1234567890", "aanaab_user_id": 123, ... } ],
+  "failed_users": [
+    { "national_id": "9999999999", "errors": ["User national id or mobile number conflicts with existing users"] }
+  ]
+}
+```
+Always check `failed_users` — valid rows are processed even when some rows fail.
 
 ### Update User
 ```
@@ -401,7 +475,7 @@ Response `200`:
 }
 ```
 
-`created_at` on the notification = when the user started the course.  
+`created_at` on the notification = when the user started the course.
 Use `meta.has_more` to show a "load more" indicator.
 
 ---
@@ -432,8 +506,13 @@ Login Page
         └── 401 → show "Invalid credentials"
 
 Dashboard Load
-  ├── GET /courses  (populate course dropdown)
-  └── GET /branches (populate branch dropdown)
+  ├── GET /languages (populate language dropdown)
+  ├── GET /courses   (populate course dropdown)
+  └── GET /branches  (populate branch dropdown)
+
+Bulk Upload
+  ├── GET /users/bulk_csv/template  (download CSV template)
+  └── POST /users/bulk_csv          (upload filled CSV, show summary + errors)
 
 Add User Form
   └── POST /users
@@ -466,5 +545,5 @@ Check `admin.role === "super_admin"` from the login response to conditionally sh
 
 ---
 
-**Local dev URL:** `http://localhost:31000`  
-**Default super admin:** `ksaleh@gmail.com` / `Dallah@2026!`
+**Local dev URL:** `http://localhost:31000`
+**Default super admin:** `ksaleh@aanaab.com` / `Dallah@2026!`

@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -12,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -20,20 +22,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useCreateUser } from "@/features/users/queries";
+import {
+  useCreateUser,
+  useLanguages,
+  useCourses,
+  useBranches,
+} from "@/features/users/queries";
+import { SCHOOL_OPTIONS } from "@/features/users/constants";
 import {
   addUserSchema,
   type AddUserFormValues,
 } from "@/features/users/schemas";
-import {
-  LANGUAGE_OPTIONS,
-  COURSE_OPTIONS,
-  SCHOOL_OPTIONS,
-  LICENCE_TYPE_OPTIONS,
-} from "@/features/users/constants";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { AxiosError } from "axios";
 
@@ -43,23 +45,51 @@ export function AddUserForm() {
   const createUser = useCreateUser();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Fetch lookup data from API
+  const { data: languages, isLoading: languagesLoading } = useLanguages();
+  const { data: courses, isLoading: coursesLoading } = useCourses();
+  const { data: branches, isLoading: branchesLoading } = useBranches();
+
   const form = useForm<AddUserFormValues>({
     resolver: zodResolver(addUserSchema) as any,
     defaultValues: {
       name: "",
-      mobile: "+9665",
+      mobile: "",
       national_id: "",
       school_id: undefined,
-      lang: undefined,
-      licence_type: undefined,
-      course_code: undefined,
+      lang: "1",
+      course_code: "",
     } as any,
   });
+
+  const selectedLang = form.watch("lang");
+
+  // Map language code to the language name used in courses API
+  const selectedLanguageName = useMemo(() => {
+    if (!languages || !selectedLang) return undefined;
+    return languages.find((l) => l.code === selectedLang)?.name;
+  }, [languages, selectedLang]);
+
+  // Filter courses by the selected language
+  const filteredCourses = useMemo(() => {
+    if (!courses || !selectedLanguageName) return [];
+    return courses.filter((c) => c.language === selectedLanguageName);
+  }, [courses, selectedLanguageName]);
+
+  function handleLanguageChange(langCode: string) {
+    form.setValue("lang", langCode);
+    // Clear course selection when language changes
+    form.setValue("course_code", "");
+  }
 
   function onSubmit(values: AddUserFormValues) {
     setSuccessMessage(null);
 
-    // Transform flat form values into the nested API payload structure
+    // Find the selected course to derive licence_type from its category
+    const selectedCourse = courses?.find(
+      (c) => c.dallah_course_code === values.course_code
+    );
+
     const payload = {
       name: values.name,
       mobile: values.mobile,
@@ -69,7 +99,8 @@ export function AddUserForm() {
       courses: [
         {
           dallah_course_code: values.course_code,
-          licence_type: values.licence_type,
+          licence_type: selectedCourse?.category || "private" as const,
+          lang: values.lang,
         },
       ],
     };
@@ -94,6 +125,7 @@ export function AddUserForm() {
   }
 
   const errorMessage = getErrorMessage();
+  const lookupsLoading = languagesLoading || coursesLoading || branchesLoading;
 
   return (
     <Form {...form}>
@@ -129,7 +161,7 @@ export function AddUserForm() {
           )}
         />
 
-        {/* Mobile */}
+        {/* Mobile — react-phone-number-input with KSA validation */}
         <FormField
           control={form.control}
           name="mobile"
@@ -137,11 +169,10 @@ export function AddUserForm() {
             <FormItem>
               <FormLabel>{t("mobileLabel")}</FormLabel>
               <FormControl>
-                <Input
-                  type="tel"
+                <PhoneInput
+                  value={field.value}
+                  onChange={field.onChange}
                   placeholder={t("mobilePlaceholder")}
-                  dir="ltr"
-                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -168,7 +199,7 @@ export function AddUserForm() {
           )}
         />
 
-        {/* School */}
+        {/* Branch (school) */}
         <FormField
           control={form.control}
           name="school_id"
@@ -178,6 +209,7 @@ export function AddUserForm() {
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value?.toString()}
+                disabled={branchesLoading}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -197,23 +229,27 @@ export function AddUserForm() {
           )}
         />
 
-        {/* Language */}
+        {/* Language — default Arabic ("1"), from API */}
         <FormField
           control={form.control}
           name="lang"
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("languageLabel")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select
+                value={field.value}
+                onValueChange={handleLanguageChange}
+                disabled={languagesLoading}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder={t("languagePlaceholder")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {LANGUAGE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {locale === "ar" ? opt.labelAr : opt.labelEn}
+                  {languages?.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -223,75 +259,52 @@ export function AddUserForm() {
           )}
         />
 
-        {/* Licence Type */}
-        <FormField
-          control={form.control}
-          name="licence_type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("licenceTypeLabel")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("licenceTypePlaceholder")} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {LICENCE_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {locale === "ar" ? opt.labelAr : opt.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Course Code */}
+        {/* Course — filtered by selected language, clears on language change */}
         <FormField
           control={form.control}
           name="course_code"
-          render={({ field }) => {
-            const selectedType = form.watch("licence_type");
-            const filteredCourses = COURSE_OPTIONS.filter(
-              (c) => !selectedType || c.type === selectedType,
-            );
-
-            return (
-              <FormItem>
-                <FormLabel>{t("courseLabel")}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={!selectedType}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("coursePlaceholder")} />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {filteredCourses.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {locale === "ar" ? opt.labelAr : opt.labelEn}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            );
-          }}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("courseLabel")}</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={!selectedLang || coursesLoading}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("coursePlaceholder")} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {filteredCourses.map((course) => (
+                    <SelectItem
+                      key={course.dallah_course_code}
+                      value={course.dallah_course_code}
+                    >
+                      {course.course_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
         />
 
         <Button
           type="submit"
           className="w-full"
-          disabled={createUser.isPending}
+          disabled={createUser.isPending || lookupsLoading}
         >
-          {createUser.isPending ? t("submitting") : t("submitButton")}
+          {createUser.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {t("submitting")}
+            </>
+          ) : (
+            t("submitButton")
+          )}
         </Button>
       </form>
     </Form>

@@ -24,11 +24,11 @@ describe("Users API", () => {
   it("createUserApi should call axios post with payload", async () => {
     const payload = {
       name: "Test",
-      mobile: "0512345678",
-      nationalId: "1234567890",
-      language: "ar" as const,
-      level: "beginner" as const,
-      vehicle: "sedan" as const,
+      mobile: "+966512345678",
+      national_id: "1234567890",
+      school_id: 3,
+      lang: "1",
+      courses: [{ dallah_course_code: "P6h", licence_type: "private" as const }],
     };
     const responseData = { id: "u1", ...payload };
     vi.mocked(axiosInstance.post).mockResolvedValueOnce({ data: responseData });
@@ -53,9 +53,9 @@ describe("Users API", () => {
   it("createEnrollmentApi should call axios post with payload", async () => {
     const payload = {
       userId: "u1",
-      language: "ar" as const,
-      level: "beginner" as const,
-      vehicle: "sedan" as const,
+      lang: "1",
+      licence_type: "private" as const,
+      course_code: "P6h",
     };
     const responseData = { id: "e1", ...payload };
     vi.mocked(axiosInstance.post).mockResolvedValueOnce({ data: responseData });
