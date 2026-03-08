@@ -12,3 +12,7 @@
 - **Playwright MCP**: Utilize the Playwright Model Context Protocol (MCP) server capabilities to execute tests, inspect application state, and verify UI correctness directly through browser interactions.
 - **Test Execution**: When asked to verify an application flow, favor using Playwright MCP to spin up the browser, navigate the app, and run test assertions automatically.
 - **UI Validation**: Always validate new frontend features by writing Playwright tests first, and use MCP tools to ensure the application behaves and looks as intended.
+
+## UI Components
+- **Shadcn UI Setup**: Use Shadcn UI for the generic interface components. Prioritize using existing primitive components in `src/components/ui/` or adding them via `npx shadcn@latest add [component-name]`.
+- **Styling**: Stick exclusively to the aesthetics provided by Tailwind CSS integrated with Shadcn conventions.
