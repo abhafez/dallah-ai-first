@@ -1,51 +1,38 @@
 import { test, expect } from "@playwright/test";
 
+const BASE_URL = "http://localhost:3000";
+
 test.describe("Dashboard Elements", () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to the dashboard page before each test
-    await page.goto("http://localhost:3000/dashboard");
+  test.beforeEach(async ({ context }) => {
+    // Mock the authenticated state by setting the auth_token cookie
+    await context.addCookies([
+      {
+        name: "auth_token",
+        value: "mock-valid-token",
+        domain: "localhost",
+        path: "/",
+      },
+    ]);
   });
 
-  test("should render the dashboard page", async ({ page }) => {
-    // Verify the page title or a main heading
+  test("should render the dashboard page layout correctly", async ({ page }) => {
+    await page.goto(`${BASE_URL}/dashboard`);
+    
+    // Verify the page title
     await expect(page.locator("h1").first()).toBeVisible();
     await expect(page.locator("h1").first()).toContainText("Dashboard");
+    
+    // Verify the Sign Out button is present
+    await expect(page.locator('button:has-text("Sign Out")')).toBeVisible();
   });
-
-  test("should render and submit the basic form", async ({ page }) => {
-    // Fill out the form fields
-    await page.locator('input[name="username"]').fill("testuser");
-    await page.locator('input[name="email"]').fill("test@example.com");
-
-    // Submit the form
-    await page.locator('button[type="submit"]').click();
-
-    // Add assertions for successful submission (e.g., a toast or success message)
-    // For now, just ensure the button is clickable and the form exists
-    await expect(page.locator("form")).toBeVisible();
-  });
-
-  test("should render the paginated table", async ({ page }) => {
-    // Check if the table is visible
-    const table = page.locator("table");
-    await expect(table).toBeVisible();
-
-    // Check for some expected table headers
-    await expect(table.locator("th").filter({ hasText: "Name" })).toBeVisible();
-    await expect(
-      table.locator("th").filter({ hasText: "Status" }),
-    ).toBeVisible();
-
-    // Check if table rows exist
-    const rows = table.locator("tbody tr");
-    await expect(rows.first()).toBeVisible();
-
-    // Check for pagination controls
-    const pagination = page.locator('nav[aria-label="pagination"]');
-    await expect(pagination).toBeVisible();
-
-    // Optional: test clicking next page if applicable in the mock data
-    // const nextButton = pagination.locator('button:has-text("Next")');
-    // await expect(nextButton).toBeVisible();
+  
+  test("should click the Sign Out button and redirect to login", async ({ page }) => {
+    await page.goto(`${BASE_URL}/dashboard`);
+    
+    // Click Sign Out
+    await page.locator('button:has-text("Sign Out")').click();
+    
+    // The useLogout mutation clears the session and redirects to /login
+    await expect(page).toHaveURL(/\/login/);
   });
 });

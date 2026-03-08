@@ -11,7 +11,7 @@ vi.mock("@/lib/axios", () => ({
   },
 }));
 
-const mockAxios = axiosInstance as {
+const mockAxios = axiosInstance as unknown as {
   post: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
 };

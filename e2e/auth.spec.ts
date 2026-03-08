@@ -12,7 +12,8 @@ test.describe("Authentication Flow", () => {
     page,
   }) => {
     await page.goto(`${BASE_URL}/dashboard`);
-    await expect(page).toHaveURL(`${BASE_URL}/login`);
+    // Middleware appends ?from=/dashboard — match with regex
+    await expect(page).toHaveURL(/\/login/);
   });
 
   test("should display the login page with form fields", async ({ page }) => {
@@ -37,10 +38,12 @@ test.describe("Authentication Flow", () => {
   }) => {
     await page.goto(`${BASE_URL}/login`);
     await page.locator('input[name="email"]').fill("wrong@example.com");
-    await page.locator('input[name="password"]').fill("wrongpassword");
+    await page.locator('input[name="password"]').fill("wrongpassword1");
     await page.locator('button[type="submit"]').click();
-    // Error toast or message should appear (API returns 401)
-    await expect(page.locator('[role="alert"]')).toBeVisible({ timeout: 5000 });
+    // Target the specific error banner div, not the Next.js route announcer
+    await expect(
+      page.locator("div[role='alert'].border-destructive\\/30")
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("should redirect authenticated users away from /login to /dashboard", async ({
@@ -60,3 +63,4 @@ test.describe("Authentication Flow", () => {
     await expect(page).toHaveURL(`${BASE_URL}/dashboard`);
   });
 });
+
