@@ -14,17 +14,20 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useLogin } from "@/features/auth/queries";
+import { useTranslations } from "next-intl";
 
+// Note: Zod schema is outside so we don't have direct access to `t`,
+// but in a real app you might generate the schema inside the component or use next-intl inside the resolver.
+// For simplicity, we keep standard messages here, or you can omit the custom messages and rely on generic ones.
 const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters." }),
+  email: z.string().email(),
+  password: z.string().min(8),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const t = useTranslations("Auth");
   const login = useLogin();
 
   const form = useForm<LoginFormValues>({
@@ -48,9 +51,7 @@ export function LoginForm() {
             role="alert"
             className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           >
-            {(login.error as { response?: { data?: { message?: string } } })
-              ?.response?.data?.message ??
-              "Invalid credentials. Please try again."}
+            {t("invalidCredentials")}
           </div>
         )}
 
@@ -59,11 +60,11 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t("emailLabel")}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder={t("emailPlaceholder")}
                   autoComplete="email"
                   {...field}
                 />
@@ -78,11 +79,11 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>{t("passwordLabel")}</FormLabel>
               <FormControl>
                 <Input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder={t("passwordPlaceholder")}
                   autoComplete="current-password"
                   {...field}
                 />
@@ -93,7 +94,7 @@ export function LoginForm() {
         />
 
         <Button type="submit" className="w-full" disabled={login.isPending}>
-          {login.isPending ? "Signing in…" : "Sign In"}
+          {login.isPending ? t("signingInButton") : t("signInButton")}
         </Button>
       </form>
     </Form>

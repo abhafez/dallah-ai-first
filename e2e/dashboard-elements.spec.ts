@@ -16,7 +16,7 @@ test.describe("Dashboard Elements", () => {
   });
 
   test("should render the dashboard page layout correctly", async ({ page }) => {
-    await page.goto(`${BASE_URL}/dashboard`);
+    await page.goto(`${BASE_URL}/en/dashboard`);
     
     // Verify the page title
     await expect(page.locator("h1").first()).toBeVisible();
@@ -27,7 +27,7 @@ test.describe("Dashboard Elements", () => {
   });
   
   test("should click the Sign Out button and redirect to login", async ({ page }) => {
-    await page.goto(`${BASE_URL}/dashboard`);
+    await page.goto(`${BASE_URL}/en/dashboard`);
     
     // Click Sign Out
     await page.locator('button:has-text("Sign Out")').click();

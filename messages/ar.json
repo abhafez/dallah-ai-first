@@ -1,0 +1,23 @@
+{
+  "Auth": {
+    "loginTitle": "تسجيل الدخول",
+    "loginDescription": "أدخل بيانات الاعتماد الخاصة بك للوصول إلى لوحة التحكم.",
+    "emailLabel": "البريد الإلكتروني",
+    "emailPlaceholder": "m@example.com",
+    "passwordLabel": "كلمة المرور",
+    "passwordPlaceholder": "••••••••",
+    "signInButton": "تسجيل الدخول",
+    "signingInButton": "جاري تسجيل الدخول...",
+    "invalidCredentials": "بيانات الاعتماد غير صالحة. يرجى المحاولة مرة أخرى."
+  },
+  "Dashboard": {
+    "title": "لوحة التحكم",
+    "signOut": "تسجيل الخروج",
+    "signingOut": "جاري تسجيل الخروج...",
+    "welcomeBack": "مرحباً بعودتك",
+    "greeting": "مرحباً بعودتك، {name}!"
+  },
+  "LanguageSwitcher": {
+    "toggle": "تغيير اللغة"
+  }
+}

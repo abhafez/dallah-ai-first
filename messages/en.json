@@ -1,0 +1,23 @@
+{
+  "Auth": {
+    "loginTitle": "Sign In",
+    "loginDescription": "Enter your credentials to access the dashboard.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "m@example.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "••••••••",
+    "signInButton": "Sign In",
+    "signingInButton": "Signing in…",
+    "invalidCredentials": "Invalid credentials. Please try again."
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "signOut": "Sign Out",
+    "signingOut": "Signing out…",
+    "welcomeBack": "Welcome back",
+    "greeting": "Welcome back, {name}!"
+  },
+  "LanguageSwitcher": {
+    "toggle": "Switch Language"
+  }
+}
