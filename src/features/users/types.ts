@@ -40,28 +40,28 @@ export interface UpdateUserPayload {
   branch?: string;
 }
 
-export interface BulkUploadRow {
-  name: string;
-  mobile: string;
-  nationalId: string;
-  language: string;
-  level: string;
-  vehicle: string;
+export interface BulkUploadResultUser {
+  national_id: string;
+  aanaab_user_id?: number;
+  name?: string;
+  [key: string]: unknown;
 }
 
-export interface BulkUploadResultRow {
-  row: number;
-  name: string;
-  nationalId: string;
-  status: "success" | "error";
-  message?: string;
+export interface BulkUploadFailedUser {
+  national_id: string;
+  name?: string;
+  errors: string[];
 }
 
 export interface BulkUploadResponse {
-  totalProcessed: number;
-  successCount: number;
-  failureCount: number;
-  results: BulkUploadResultRow[];
+  message: string;
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+  };
+  results: BulkUploadResultUser[];
+  failed_users: BulkUploadFailedUser[];
 }
 
 export interface Enrollment {

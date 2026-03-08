@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import {useState, useRef, ChangeEvent} from "react";
 import { useTranslations } from "next-intl";
 import { useBulkUploadUsers } from "@/features/users/queries";
+import { downloadBulkCsvTemplateApi } from "@/features/users/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,7 +29,9 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function BulkImportPage() {
   const t = useTranslations("BulkImport");
@@ -37,8 +40,9 @@ export default function BulkImportPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [result, setResult] = useState<BulkUploadResponse | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     setFileError(null);
     setResult(null);
     const file = e.target.files?.[0];
@@ -60,34 +64,46 @@ export default function BulkImportPage() {
     bulkUpload.mutate(selectedFile, {
       onSuccess: (data) => {
         setResult(data);
+        // Clear the file input on success
         setSelectedFile(null);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
+        // Toast notification
+        if (data.summary.failed === 0) {
+          toast.success(t("successToast", { count: data.summary.successful }));
+        } else {
+          toast.warning(
+            t("partialSuccessToast", {
+              successful: data.summary.successful,
+              failed: data.summary.failed,
+            }),
+          );
+        }
+      },
+      onError: () => {
+        toast.error(t("errorToast"));
       },
     });
   }
 
-  function downloadTemplate() {
-    const csvContent =
-      "name,mobile,nationalId,language,level,vehicle\n" +
-      "Ahmed Ali,0512345678,1234567890,ar,beginner,sedan\n";
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "user_import_template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+  async function handleDownloadTemplate() {
+    setIsDownloadingTemplate(true);
+    try {
+      await downloadBulkCsvTemplateApi();
+    } catch {
+      toast.error(t("templateError"));
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
   }
 
   function downloadErrorReport() {
-    if (!result) return;
-    const errors = result.results.filter((r) => r.status === "error");
+    if (!result || !result.failed_users.length) return;
     const csvContent =
-      "row,name,nationalId,message\n" +
-      errors
-        .map((e) => `${e.row},${e.name},${e.nationalId},${e.message || ""}`)
+      "national_id,name,errors\n" +
+      result.failed_users
+        .map((u) => `${u.national_id},${u.name || ""},${u.errors.join("; ")}`)
         .join("\n");
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -115,8 +131,17 @@ export default function BulkImportPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={downloadTemplate} type="button">
-              <Download className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              onClick={handleDownloadTemplate}
+              disabled={isDownloadingTemplate}
+              type="button"
+            >
+              {isDownloadingTemplate ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
               {t("downloadTemplate")}
             </Button>
           </div>
@@ -135,7 +160,14 @@ export default function BulkImportPage() {
               onClick={handleUpload}
               disabled={!selectedFile || bulkUpload.isPending}
             >
-              {bulkUpload.isPending ? t("uploading") : t("uploadButton")}
+              {bulkUpload.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("uploading")}
+                </>
+              ) : (
+                t("uploadButton")
+              )}
             </Button>
           </div>
 
@@ -149,9 +181,7 @@ export default function BulkImportPage() {
           {bulkUpload.isError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Something went wrong during upload. Please try again.
-              </AlertDescription>
+              <AlertDescription>{t("errorGeneral")}</AlertDescription>
             </Alert>
           )}
         </CardContent>
@@ -167,60 +197,93 @@ export default function BulkImportPage() {
             </CardTitle>
             <CardDescription>
               <span className="mr-4">
-                {t("totalProcessed")}: <strong>{result.totalProcessed}</strong>
+                {t("totalProcessed")}: <strong>{result.summary.total}</strong>
               </span>
               <span className="mr-4 text-green-600">
-                {t("successCount")}: <strong>{result.successCount}</strong>
+                {t("successCount")}:{" "}
+                <strong>{result.summary.successful}</strong>
               </span>
               <span className="text-red-600">
-                {t("failureCount")}: <strong>{result.failureCount}</strong>
+                {t("failureCount")}: <strong>{result.summary.failed}</strong>
               </span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[60px]">{t("row")}</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>National ID</TableHead>
-                    <TableHead>{t("status")}</TableHead>
-                    <TableHead>{t("message")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {result.results.map((row) => (
-                    <TableRow key={row.row}>
-                      <TableCell className="font-mono">{row.row}</TableCell>
-                      <TableCell>{row.name}</TableCell>
-                      <TableCell className="font-mono">
-                        {row.nationalId}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            row.status === "success" ? "default" : "destructive"
-                          }
-                        >
-                          {row.status === "success" ? (
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                          ) : (
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {row.status === "success" ? t("success") : t("error")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {row.message || "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            {/* Successful users */}
+            {result.results.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium mb-2 flex items-center gap-1.5 text-green-700">
+                  <CheckCircle className="h-4 w-4" />
+                  {t("successfulUsers")}
+                </h3>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("nationalId")}</TableHead>
+                        <TableHead>{t("status")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.results.map((user) => (
+                        <TableRow key={user.national_id}>
+                          <TableCell className="font-mono">
+                            {user.national_id}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="default">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              {t("success")}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
 
-            {result.failureCount > 0 && (
+            {/* Failed users */}
+            {result.failed_users.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium mb-2 flex items-center gap-1.5 text-red-700">
+                  <AlertCircle className="h-4 w-4" />
+                  {t("failedUsers")}
+                </h3>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("nationalId")}</TableHead>
+                        <TableHead>{t("status")}</TableHead>
+                        <TableHead>{t("message")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.failed_users.map((user) => (
+                        <TableRow key={user.national_id}>
+                          <TableCell className="font-mono">
+                            {user.national_id}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="destructive">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {t("error")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {user.errors.join(", ")}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {result.failed_users.length > 0 && (
               <Button variant="outline" onClick={downloadErrorReport}>
                 <Download className="h-4 w-4 mr-2" />
                 {t("downloadErrors")}

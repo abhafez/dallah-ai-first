@@ -43,11 +43,24 @@ export async function bulkUploadUsersApi(
   const formData = new FormData();
   formData.append("file", file);
   const { data } = await axiosInstance.post<BulkUploadResponse>(
-    "/users/bulk",
+    "/users/bulk_csv",
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }
   );
   return data;
+}
+
+export async function downloadBulkCsvTemplateApi(): Promise<void> {
+  const { data } = await axiosInstance.get("/users/bulk_csv/template", {
+    responseType: "blob",
+  });
+  const blob = data instanceof Blob ? data : new Blob([data], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bulk_upload_template.csv";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
