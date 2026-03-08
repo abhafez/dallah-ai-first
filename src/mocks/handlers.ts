@@ -16,7 +16,9 @@ import type {
 } from "@/features/users/types";
 
 // Helper to construct the full URL
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const baseUrl = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL + "/api/v1/dallah"
+  : "http://localhost:31000/api/v1/dallah";
 const url = (path: string) => `${baseUrl}${path}`;
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -27,16 +29,17 @@ let _nextUserId = 4;
 let _nextEnrollmentId = 4;
 
 const MOCK_USER: AuthUser = {
-  id: "user-dev-1",
-  email: "test@example.com",
-  name: "Mock Developer User",
+  id: 1,
+  email: "ksaleh@gmail.com",
+  name: "K Saleh",
+  role: "super_admin",
 };
 
 const MOCK_USERS: User[] = [
   {
     id: "u1",
     name: "Ahmed Al-Rashid",
-    mobile: "0512345678",
+    mobile: "+966512345678",
     nationalId: "1234567890",
     language: "ar",
     level: "beginner",
@@ -47,8 +50,8 @@ const MOCK_USERS: User[] = [
   {
     id: "u2",
     name: "Sara Mohammad",
-    mobile: "0587654321",
-    nationalId: "0987654321",
+    mobile: "+966587654321",
+    nationalId: "2098765432",
     language: "ar",
     level: "intermediate",
     vehicle: "suv",
@@ -58,7 +61,7 @@ const MOCK_USERS: User[] = [
   {
     id: "u3",
     name: "John Smith",
-    mobile: "0555555555",
+    mobile: "+966555555555",
     nationalId: "1122334455",
     language: "en",
     level: "advanced",
@@ -74,30 +77,30 @@ const MOCK_ENROLLMENTS: Enrollment[] = [
     userId: "u1",
     courseTitle: "Defensive Driving - Level 1",
     courseId: "c1",
-    language: "ar",
-    level: "beginner",
-    vehicle: "sedan",
-    createdAt: "2026-01-15T10:00:00Z",
+    lang: "1",
+    licence_type: "private",
+    course_code: "P30h",
+    createdAt: "2026-02-01T09:00:00Z",
   },
   {
     id: "e2",
     userId: "u2",
     courseTitle: "Advanced Driving Skills",
     courseId: "c2",
-    language: "ar",
-    level: "intermediate",
-    vehicle: "suv",
-    createdAt: "2026-02-10T08:30:00Z",
+    lang: "1",
+    licence_type: "private",
+    course_code: "P15h",
+    createdAt: "2026-02-15T11:00:00Z",
   },
   {
     id: "e3",
     userId: "u3",
     courseTitle: "Commercial Vehicle Training",
     courseId: "c3",
-    language: "en",
-    level: "advanced",
-    vehicle: "truck",
-    createdAt: "2026-03-01T14:00:00Z",
+    lang: "2",
+    licence_type: "public",
+    course_code: "PUB-L",
+    createdAt: "2026-03-05T15:30:00Z",
   },
 ];
 
@@ -140,44 +143,41 @@ export const handlers = [
   // ═══════════════════════════════════════════════════════════════════════════
 
   // LOGIN
-  http.post<never, LoginCredentials, LoginResponse | { message: string }>(
+  http.post<never, LoginCredentials, LoginResponse | { error: string }>(
     url("/auth/login"),
     async ({ request }) => {
       await delay(800);
       const body = await request.json();
       if (body.email === "wrong@example.com") {
         return HttpResponse.json(
-          { message: "Invalid credentials. Please try again." },
-          { status: 400 }
+          { error: "Invalid email or password" },
+          { status: 401 }
         );
       }
       _mockIsAuthenticated = true;
       return HttpResponse.json({
-        user: MOCK_USER,
         token: "d878cc925faf27582697aa88972f7f8c897c7d71f532dfbd0b941915d6e1e391",
+        admin: MOCK_USER,
       });
     }
   ),
 
   // GET ME
-  http.get<never, never, AuthUser | { message: string }>(
+  http.get<never, never, { admin: AuthUser } | { error: string; status: number }>(
     url("/auth/me"),
     async ({ request }) => {
       await delay(400);
       const authHeader = request.headers.get("Authorization");
       if (!_mockIsAuthenticated && !authHeader?.includes("Bearer")) {
-        return HttpResponse.json({ message: "Unauthorized" }, { status: 401 });
+        return HttpResponse.json(
+          { error: "authorization required", status: 401 },
+          { status: 401 }
+        );
       }
-      return HttpResponse.json(MOCK_USER);
+      return HttpResponse.json({ admin: MOCK_USER });
     }
   ),
 
-  // LOGOUT
-  http.post(url("/auth/logout"), async () => {
-    await delay(400);
-    _mockIsAuthenticated = false;
-    return new HttpResponse(null, { status: 200 });
-  }),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // USERS
@@ -192,7 +192,7 @@ export const handlers = [
 
       // Check for duplicate national ID or mobile
       const duplicate = MOCK_USERS.find(
-        (u) => u.nationalId === body.nationalId || u.mobile === body.mobile
+        (u) => u.nationalId === body.national_id || u.mobile === body.mobile
       );
       if (duplicate) {
         return HttpResponse.json(
@@ -203,8 +203,13 @@ export const handlers = [
 
       const newUser: User = {
         id: `u${_nextUserId++}`,
-        ...body,
-        branch: "Default",
+        name: body.name,
+        mobile: body.mobile,
+        nationalId: body.national_id,
+        language: body.lang === "1" ? "ar" : "en",
+        level: (body.courses[0]?.dallah_course_code?.includes("P6") ? "beginner" : "intermediate"),
+        vehicle: (body.courses[0]?.licence_type === "motor" ? "motorcycle" : "sedan"),
+        branch: `School ${body.school_id}`,
         createdAt: new Date().toISOString(),
       };
       MOCK_USERS.push(newUser);
@@ -213,11 +218,11 @@ export const handlers = [
       const enrollment: Enrollment = {
         id: `e${_nextEnrollmentId++}`,
         userId: newUser.id,
-        courseTitle: `Course for ${body.level} ${body.vehicle}`,
+        courseTitle: `Course ${body.courses[0]?.dallah_course_code}`,
         courseId: `c-auto-${newUser.id}`,
-        language: body.language,
-        level: body.level,
-        vehicle: body.vehicle,
+        lang: newUser.language === "ar" ? "1" : "2",
+        licence_type: (body.courses[0]?.licence_type || "private"),
+        course_code: body.courses[0]?.dallah_course_code || "P6h",
         createdAt: new Date().toISOString(),
       };
       MOCK_ENROLLMENTS.push(enrollment);
@@ -337,11 +342,11 @@ export const handlers = [
       const enrollment: Enrollment = {
         id: `e${_nextEnrollmentId++}`,
         userId: body.userId,
-        courseTitle: `Course for ${body.level} ${body.vehicle}`,
-        courseId: `c-new-${Date.now()}`,
-        language: body.language,
-        level: body.level,
-        vehicle: body.vehicle,
+        courseTitle: `New Course ${body.course_code}`,
+        courseId: `c-new-${body.userId}`,
+        lang: body.lang,
+        licence_type: body.licence_type,
+        course_code: body.course_code,
         createdAt: new Date().toISOString(),
       };
       MOCK_ENROLLMENTS.push(enrollment);
@@ -388,11 +393,11 @@ export const handlers = [
       const enrollment: Enrollment = {
         id: `e${_nextEnrollmentId++}`,
         userId: body.userId,
-        courseTitle: `Course for ${body.level} ${body.vehicle}`,
+        courseTitle: `Replaced Course ${body.course_code}`,
         courseId: `c-replaced-${Date.now()}`,
-        language: body.language,
-        level: body.level,
-        vehicle: body.vehicle,
+        lang: body.lang,
+        licence_type: body.licence_type,
+        course_code: body.course_code,
         createdAt: new Date().toISOString(),
       };
       MOCK_ENROLLMENTS.push(enrollment);

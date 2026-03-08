@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
+import { http, HttpResponse } from "msw";
+import { server } from "@/mocks/server";
 import { loginApi, getMeApi, logoutApi } from "@/features/auth/api";
 import type { LoginCredentials } from "@/features/auth/types";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL + "/api/v1/dallah"
+  : "http://localhost:31000/api/v1/dallah";
 
 const mockCredentials: LoginCredentials = {
   email: "user@example.com",
@@ -13,8 +19,8 @@ describe("Auth API with MSW", () => {
       const result = await loginApi(mockCredentials);
 
       expect(result.token).toBe("d878cc925faf27582697aa88972f7f8c897c7d71f532dfbd0b941915d6e1e391");
-      expect(result.user.email).toBe("test@example.com");
-      expect(result.user.name).toBe("Mock Developer User");
+      expect(result.admin.email).toBe("ksaleh@gmail.com");
+      expect(result.admin.name).toBe("K Saleh");
     });
 
     it("should throw when the server returns an error (401)", async () => {
@@ -30,14 +36,19 @@ describe("Auth API with MSW", () => {
       await loginApi(mockCredentials);
 
       const result = await getMeApi();
-      expect(result.email).toBe("test@example.com");
-      expect(result.name).toBe("Mock Developer User");
+      expect(result.email).toBe("ksaleh@gmail.com");
+      expect(result.name).toBe("K Saleh");
     });
 
     it("should throw on 401 when the token is invalid (not logged in)", async () => {
-      // First, log out so MSW rejects the request
-      await logoutApi();
-      
+      server.use(
+        http.get(`${API_BASE}/auth/me`, () => {
+          return HttpResponse.json(
+            { error: "authorization required", status: 401 },
+            { status: 401 }
+          );
+        })
+      );
       await expect(getMeApi()).rejects.toThrow();
     });
   });

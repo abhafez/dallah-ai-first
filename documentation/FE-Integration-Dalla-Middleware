@@ -1,0 +1,470 @@
+Here is the complete frontend integration guide:
+
+---
+
+# Dallah Admin Dashboard — Frontend Integration Guide
+
+**Base URL:** `http://<server>:31000`  
+**All endpoints:** `POST/GET/PATCH/DELETE /api/v1/dallah/...`  
+**Content-Type:** `application/json`  
+
+---
+
+## Authentication Overview
+
+The API supports two auth methods. The frontend always uses **JWT**.
+
+Every request (except `POST /auth/login`) must include:
+```
+Authorization: Bearer <token>
+```
+
+If the token is missing, expired, or invalid → **401 Unauthorized**.
+
+---
+
+## 1. Auth Endpoints
+
+### Login
+```
+POST /api/v1/dallah/auth/login
+```
+**Public — no Authorization header needed.**
+
+Request body:
+```json
+{
+  "email": "ksaleh@gmail.com",
+  "password": "Dallah@2026!"
+}
+```
+
+Success `200`:
+```json
+{
+  "token": "eyJhbGci...",
+  "admin": {
+    "id": 1,
+    "name": "K Saleh",
+    "email": "ksaleh@gmail.com",
+    "role": "super_admin"
+  }
+}
+```
+
+Error `401`:
+```json
+{ "error": "Invalid email or password" }
+```
+
+**Store the token** in `localStorage` or a secure cookie. Attach it to every subsequent request.
+
+---
+
+### Get Current Admin Profile
+```
+GET /api/v1/dallah/auth/me
+```
+**Requires JWT only** (static M2M bearer will be rejected here).
+
+Success `200`:
+```json
+{
+  "admin": {
+    "id": 1,
+    "name": "K Saleh",
+    "email": "ksaleh@gmail.com",
+    "role": "super_admin"
+  }
+}
+```
+
+Use this on app load to validate the stored token and get the current user's role.
+
+---
+
+## 2. Admin Management
+**Super admin only.** Regular admins get `403 Forbidden`.
+
+### List All Admins
+```
+GET /api/v1/dallah/admins
+```
+Response `200`:
+```json
+{
+  "admins": [
+    {
+      "id": 1,
+      "name": "K Saleh",
+      "email": "ksaleh@gmail.com",
+      "role": "super_admin",
+      "active": true,
+      "created_at": "2026-03-08T11:55:58Z"
+    }
+  ]
+}
+```
+
+### Register New Admin
+```
+POST /api/v1/dallah/admins
+```
+Request body:
+```json
+{
+  "email": "newadmin@company.com",
+  "password": "Secure@Pass1",
+  "password_confirmation": "Secure@Pass1",
+  "name": "Admin Name",
+  "role": "admin"
+}
+```
+Roles: `"admin"` or `"super_admin"`
+
+Success `201`:
+```json
+{
+  "admin": { "id": 2, "name": "Admin Name", "email": "newadmin@company.com", "role": "admin", "active": true, "created_at": "..." }
+}
+```
+
+Error `422`:
+```json
+{ "error": "Validation failed", "details": ["Email has already been taken"] }
+```
+
+### Update Admin (role, name, activate/deactivate, password)
+```
+PATCH /api/v1/dallah/admins/:id
+```
+Request body (any subset):
+```json
+{
+  "name": "New Name",
+  "role": "super_admin",
+  "active": false,
+  "password": "NewPass@1",
+  "password_confirmation": "NewPass@1"
+}
+```
+Success `200`: returns updated admin object.
+
+### Deactivate Admin
+```
+DELETE /api/v1/dallah/admins/:id
+```
+Success `200`: `{ "message": "Admin deactivated successfully" }`
+
+Error `422` (cannot deactivate self): `{ "error": "Cannot deactivate your own account" }`
+
+---
+
+## 3. Lookup Endpoints (Populate Dropdowns)
+
+Call these when the dashboard loads to populate dropdowns. Both work with JWT or static bearer.
+
+### List Courses
+```
+GET /api/v1/dallah/courses
+```
+Response `200`:
+```json
+{
+  "courses": [
+    {
+      "id": 1,
+      "course_name": "Private Driving - Arabic",
+      "dallah_course_code": "P6h",
+      "language": "Arabic",
+      "category": "private"
+    }
+  ]
+}
+```
+Use `dallah_course_code` + `language` + `category` when submitting enrollment requests.
+
+### List Branches
+```
+GET /api/v1/dallah/branches
+```
+Response `200`:
+```json
+{
+  "branches": [
+    {
+      "id": 1,
+      "branch_id": 6,
+      "branch_name": "Riyadh",
+      "section_id": 10,
+      "section_name": "Central"
+    }
+  ]
+}
+```
+Use `branch_id` as the `school_id` when creating users.
+
+---
+
+## 4. User Endpoints
+
+### Search / List Users
+```
+GET /api/v1/dallah/users?q=<search_term>
+```
+- Search by **name** or **mobile number**: partial match (e.g. `?q=ahmed`)
+- Search by **national ID**: must be exact 10-digit match starting with 1 or 2 (e.g. `?q=1234567890`)
+- Omit `q` to get the 50 most recent users
+
+Response `200`:
+```json
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Ahmed Ali",
+      "national_id": "1234567890",
+      "mobile_number": "+966501234567",
+      "email": "ahmed@dallah.edu.sa",
+      "lang": "ar",
+      "status": "created",
+      "organization_branch_id": 1,
+      "enrollments": [
+        {
+          "id": 5,
+          "status": "created",
+          "course": {
+            "id": 1,
+            "course_name": "Private Driving - Arabic",
+            "dallah_course_code": "P6h",
+            "language": "Arabic",
+            "category": "private"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Create Single User + Enroll
+```
+POST /api/v1/dallah/users
+```
+Request body:
+```json
+{
+  "national_id": "1234567890",
+  "name": "Ahmed Ali",
+  "mobile": "+966501234567",
+  "lang": "1",
+  "school_id": 6,
+  "courses": [
+    {
+      "dallah_course_code": "P6h",
+      "licence_type": "private",
+      "lang": "1"
+    }
+  ]
+}
+```
+
+Language codes: `"1"` = Arabic, `"2"` = English, `"3"` = Urdu, `"4"` = Hindi  
+Licence types: `"private"`, `"motor"`, `"public"`
+
+Success `201` — returns created user data.  
+Error `422` — returns `{ "error": "...", "details": [...] }`.
+
+### Bulk Create Users (JSON)
+```
+POST /api/v1/dallah/users/bulk
+```
+Request body:
+```json
+{
+  "users": [
+    {
+      "national_id": "1234567890",
+      "name": "Ahmed Ali",
+      "mobile": "+966501234567",
+      "lang": "1",
+      "school_id": 6,
+      "courses": [{ "dallah_course_code": "P6h", "licence_type": "private", "lang": "1" }]
+    },
+    { "..." }
+  ]
+}
+```
+Max 100 users per request. Response includes per-user success/failure breakdown.
+
+### Update User
+```
+PATCH /api/v1/dallah/users
+```
+Request body:
+```json
+{
+  "current_national_id": "1234567890",
+  "name": "Ahmed Ali Updated",
+  "mobile": "+966509999999",
+  "lang": "2"
+}
+```
+`current_national_id` is required to find the user. All other fields are optional.
+
+---
+
+## 5. Enrollment Endpoints
+
+All enrollment endpoints require `national_id` (exact 10-digit) to identify the user.
+
+### Create Enrollment (add user to a course)
+```
+POST /api/v1/dallah/enrollments
+```
+```json
+{
+  "national_id": "1234567890",
+  "courses": [
+    { "dallah_course_code": "P6h", "lang": "1", "licence_type": "private" }
+  ]
+}
+```
+
+### Delete Enrollment
+```
+DELETE /api/v1/dallah/enrollments
+```
+```json
+{
+  "national_id": "1234567890",
+  "courses": [
+    { "dallah_course_code": "P6h", "lang": "1", "licence_type": "private" }
+  ]
+}
+```
+
+### Replace Enrollment (delete old + create new in one call)
+```
+POST /api/v1/dallah/enrollments/replace
+```
+```json
+{
+  "national_id": "1234567890",
+  "courses": [
+    {
+      "old": { "dallah_course_code": "P6h", "lang": "1", "licence_type": "private" },
+      "new": { "dallah_course_code": "M15h", "lang": "2", "licence_type": "motor" }
+    }
+  ]
+}
+```
+
+### Get Progress Report for a User
+```
+POST /api/v1/dallah/enrollments/progress_report
+```
+```json
+{
+  "national_id": "1234567890",
+  "dallah_course_code": "P6h",
+  "lang": "1",
+  "licence_type": "private"
+}
+```
+
+---
+
+## 6. Notifications (Attendance / Progress View)
+```
+GET /api/v1/dallah/notifications
+```
+Returns up to 100 unprocessed notifications (oldest first).
+
+Response `200`:
+```json
+{
+  "notifications": [
+    {
+      "id": 42,
+      "event_type": "enrollment_outcome",
+      "created_at": "2026-03-08T10:00:00Z",
+      "enrollment": {
+        "aanaab_user_id": 123,
+        "enrollment_id": 5,
+        "workflow_state": "active",
+        "total_progress": 0.25
+      }
+    }
+  ],
+  "meta": { "count": 1, "has_more": false }
+}
+```
+
+`created_at` on the notification = when the user started the course.  
+Use `meta.has_more` to show a "load more" indicator.
+
+---
+
+## 7. Common Error Responses
+
+| Status | Meaning | Body |
+|---|---|---|
+| 401 | Missing/invalid/expired token | `{ "error": "authorization required", "status": 401 }` |
+| 403 | Logged in but not super_admin | `{ "error": "Forbidden", "status": 403 }` |
+| 404 | Admin/user not found | `{ "error": "Admin not found" }` |
+| 422 | Validation error | `{ "error": "Validation failed", "details": ["..."] }` |
+| 503 | LMS/Keycloak unavailable | `{ "error": "Service unavailable", "message": "..." }` |
+
+---
+
+## 8. Suggested Frontend Flow
+
+```
+App Load
+  └── GET /auth/me
+        ├── 200 → restore session, check role
+        └── 401 → redirect to Login page
+
+Login Page
+  └── POST /auth/login
+        ├── 200 → save token, redirect to Dashboard
+        └── 401 → show "Invalid credentials"
+
+Dashboard Load
+  ├── GET /courses  (populate course dropdown)
+  └── GET /branches (populate branch dropdown)
+
+Add User Form
+  └── POST /users
+        ├── 201 → success toast
+        └── 422 → show field errors inline
+
+User Search
+  └── GET /users?q=<input>  (debounce 300ms)
+
+Enrollment Actions
+  ├── POST /enrollments/replace  (change course)
+  └── DELETE /enrollments        (remove from course)
+
+Attendance / Progress View
+  └── GET /notifications
+        └── display table with user + started date
+```
+
+---
+
+## 9. Super Admin vs Admin Permissions
+
+| Action | admin | super_admin |
+|---|---|---|
+| Login, view profile | ✅ | ✅ |
+| All user/enrollment/notification endpoints | ✅ | ✅ |
+| `GET/POST/PATCH/DELETE /admins` | ❌ 403 | ✅ |
+
+Check `admin.role === "super_admin"` from the login response to conditionally show the "Manage Admins" section.
+
+---
+
+**Local dev URL:** `http://localhost:31000`  
+**Default super admin:** `ksaleh@gmail.com` / `Dallah@2026!`

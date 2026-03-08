@@ -27,8 +27,9 @@ import {
 } from "@/features/users/schemas";
 import {
   LANGUAGE_OPTIONS,
-  LEVEL_OPTIONS,
-  VEHICLE_OPTIONS,
+  COURSE_OPTIONS,
+  SCHOOL_OPTIONS,
+  LICENCE_TYPE_OPTIONS,
 } from "@/features/users/constants";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
@@ -43,20 +44,37 @@ export function AddUserForm() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const form = useForm<AddUserFormValues>({
-    resolver: zodResolver(addUserSchema),
+    resolver: zodResolver(addUserSchema) as any,
     defaultValues: {
       name: "",
-      mobile: "",
-      nationalId: "",
-      language: undefined,
-      level: undefined,
-      vehicle: undefined,
-    },
+      mobile: "+9665",
+      national_id: "",
+      school_id: undefined,
+      lang: undefined,
+      licence_type: undefined,
+      course_code: undefined,
+    } as any,
   });
 
   function onSubmit(values: AddUserFormValues) {
     setSuccessMessage(null);
-    createUser.mutate(values, {
+
+    // Transform flat form values into the nested API payload structure
+    const payload = {
+      name: values.name,
+      mobile: values.mobile,
+      national_id: values.national_id,
+      school_id: values.school_id,
+      lang: values.lang,
+      courses: [
+        {
+          dallah_course_code: values.course_code,
+          licence_type: values.licence_type,
+        },
+      ],
+    };
+
+    createUser.mutate(payload, {
       onSuccess: () => {
         setSuccessMessage(t("successMessage"));
         form.reset();
@@ -134,7 +152,7 @@ export function AddUserForm() {
         {/* National ID */}
         <FormField
           control={form.control}
-          name="nationalId"
+          name="national_id"
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("nationalIdLabel")}</FormLabel>
@@ -150,10 +168,39 @@ export function AddUserForm() {
           )}
         />
 
+        {/* School */}
+        <FormField
+          control={form.control}
+          name="school_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("schoolLabel")}</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value?.toString()}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("schoolPlaceholder")} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {SCHOOL_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {locale === "ar" ? opt.labelAr : opt.labelEn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {/* Language */}
         <FormField
           control={form.control}
-          name="language"
+          name="lang"
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("languageLabel")}</FormLabel>
@@ -176,21 +223,21 @@ export function AddUserForm() {
           )}
         />
 
-        {/* Level */}
+        {/* Licence Type */}
         <FormField
           control={form.control}
-          name="level"
+          name="licence_type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("levelLabel")}</FormLabel>
+              <FormLabel>{t("licenceTypeLabel")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder={t("levelPlaceholder")} />
+                    <SelectValue placeholder={t("licenceTypePlaceholder")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {LEVEL_OPTIONS.map((opt) => (
+                  {LICENCE_TYPE_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {locale === "ar" ? opt.labelAr : opt.labelEn}
                     </SelectItem>
@@ -202,30 +249,41 @@ export function AddUserForm() {
           )}
         />
 
-        {/* Vehicle */}
+        {/* Course Code */}
         <FormField
           control={form.control}
-          name="vehicle"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("vehicleLabel")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("vehiclePlaceholder")} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {VEHICLE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {locale === "ar" ? opt.labelAr : opt.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
+          name="course_code"
+          render={({ field }) => {
+            const selectedType = form.watch("licence_type");
+            const filteredCourses = COURSE_OPTIONS.filter(
+              (c) => !selectedType || c.type === selectedType,
+            );
+
+            return (
+              <FormItem>
+                <FormLabel>{t("courseLabel")}</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  disabled={!selectedType}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("coursePlaceholder")} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {filteredCourses.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {locale === "ar" ? opt.labelAr : opt.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
 
         <Button

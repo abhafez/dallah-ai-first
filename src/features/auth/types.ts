@@ -4,12 +4,13 @@ export interface LoginCredentials {
 }
 
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string;
   name: string;
+  role: "admin" | "super_admin";
 }
 
 export interface LoginResponse {
   token: string;
-  user: AuthUser;
+  admin: AuthUser;
 }

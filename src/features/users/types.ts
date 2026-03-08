@@ -1,26 +1,35 @@
-// ──────────────────────────────────────────────────────────────────────────────
 // Shared types for Users, Enrollments, and related entities
 // ──────────────────────────────────────────────────────────────────────────────
+ 
+export interface DropdownOption<T extends string> {
+  value: T;
+  labelEn: string;
+  labelAr: string;
+}
 
 export interface User {
   id: string;
   name: string;
   mobile: string;
   nationalId: string;
-  language: Language;
-  level: Level;
-  vehicle: Vehicle;
+  language: string; // "ar" | "en" for display, but often mapped from "1"-"4"
+  level: string; // maps to course_code
+  vehicle: string; // maps to licence_type
   branch?: string;
   createdAt?: string;
 }
 
 export interface CreateUserPayload {
   name: string;
-  mobile: string;
-  nationalId: string;
-  language: Language;
-  level: Level;
-  vehicle: Vehicle;
+  mobile: string; // Must be +966XXXXXXXXX
+  national_id: string; // Exactly 10 digits, starts with 1 or 2
+  school_id: number;
+  lang: string; // "1", "2", "3", "4"
+  courses: Array<{
+    dallah_course_code: string;
+    licence_type: "private" | "motor" | "public";
+    lang?: string;
+  }>;
 }
 
 export interface UpdateUserPayload {
@@ -60,25 +69,25 @@ export interface Enrollment {
   userId: string;
   courseTitle: string;
   courseId: string;
-  language: Language;
-  level: Level;
-  vehicle: Vehicle;
+  lang: string;
+  licence_type: "private" | "motor" | "public";
+  course_code: string;
   createdAt: string;
 }
 
 export interface CreateEnrollmentPayload {
   userId: string;
-  language: Language;
-  level: Level;
-  vehicle: Vehicle;
+  lang: string;
+  licence_type: "private" | "motor" | "public";
+  course_code: string;
 }
 
 export interface ReplaceEnrollmentPayload {
   enrollmentId: string;
   userId: string;
-  language: Language;
-  level: Level;
-  vehicle: Vehicle;
+  lang: string;
+  licence_type: "private" | "motor" | "public";
+  course_code: string;
 }
 
 export interface AttendanceRecord {

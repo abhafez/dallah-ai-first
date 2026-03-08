@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dalla AI Dashboard",
+  title: "Dallah Dashboard",
   description: "AI-first dashboard",
 };
 

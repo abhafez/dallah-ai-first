@@ -3,12 +3,14 @@ import * as z from "zod";
 // ──────────────────────────────────────────────────────────────────────────────
 // Saudi mobile number: starts with 05, 10 digits total
 // ──────────────────────────────────────────────────────────────────────────────
-const saudiMobileRegex = /^05\d{8}$/;
+// Saudi mobile number: starts with +9665, followed by 8 digits
+const saudiMobileRegex = /^\+9665\d{8}$/;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // National ID: exactly 10 digits
 // ──────────────────────────────────────────────────────────────────────────────
-const nationalIdRegex = /^\d{10}$/;
+// National ID: exactly 10 digits, starts with 1 or 2
+const nationalIdRegex = /^[12]\d{9}$/;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Add User Schema
@@ -16,14 +18,13 @@ const nationalIdRegex = /^\d{10}$/;
 export const addUserSchema = z.object({
   name: z.string().min(1, "nameRequired"),
   mobile: z.string().regex(saudiMobileRegex, "mobileInvalid"),
-  nationalId: z.string().regex(nationalIdRegex, "nationalIdInvalid"),
-  language: z.enum(["ar", "en"], { message: "languageRequired" }),
-  level: z.enum(["beginner", "intermediate", "advanced"], {
-    message: "levelRequired",
+  national_id: z.string().regex(nationalIdRegex, "nationalIdInvalid"),
+  school_id: z.coerce.number().min(1, "schoolRequired"),
+  lang: z.string().min(1, "languageRequired"),
+  licence_type: z.enum(["private", "motor", "public"], {
+    message: "licenceTypeRequired",
   }),
-  vehicle: z.enum(["sedan", "suv", "truck", "bus", "motorcycle"], {
-    message: "vehicleRequired",
-  }),
+  course_code: z.string().min(1, "courseRequired"),
 });
 
 export type AddUserFormValues = z.infer<typeof addUserSchema>;
@@ -46,13 +47,11 @@ export type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
 // ──────────────────────────────────────────────────────────────────────────────
 export const createEnrollmentSchema = z.object({
   userId: z.string().min(1),
-  language: z.enum(["ar", "en"], { message: "languageRequired" }),
-  level: z.enum(["beginner", "intermediate", "advanced"], {
-    message: "levelRequired",
+  lang: z.string().min(1, "languageRequired"),
+  licence_type: z.enum(["private", "motor", "public"], {
+    message: "licenceTypeRequired",
   }),
-  vehicle: z.enum(["sedan", "suv", "truck", "bus", "motorcycle"], {
-    message: "vehicleRequired",
-  }),
+  course_code: z.string().min(1, "courseRequired"),
 });
 
 export type CreateEnrollmentFormValues = z.infer<typeof createEnrollmentSchema>;

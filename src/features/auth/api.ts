@@ -7,10 +7,10 @@ export async function loginApi(credentials: LoginCredentials): Promise<LoginResp
 }
 
 export async function getMeApi(): Promise<AuthUser> {
-  const { data } = await axiosInstance.get<AuthUser>("/auth/me");
-  return data;
+  const { data } = await axiosInstance.get<{ admin: AuthUser }>("/auth/me");
+  return data.admin;
 }
 
 export async function logoutApi(): Promise<void> {
-  await axiosInstance.post("/auth/logout");
+  // No logout endpoint in the API — just resolve so onSettled clears local state
 }

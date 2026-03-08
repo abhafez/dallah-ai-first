@@ -80,7 +80,7 @@ export default function DashboardLayout({
   const sidebarContent = (
     <nav className="flex flex-col gap-1 p-4">
       <div className="mb-4 px-2">
-        <h2 className="text-lg font-bold tracking-tight">Dalla AI</h2>
+        <h2 className="text-lg font-bold tracking-tight">Dalla</h2>
         <p className="text-xs text-muted-foreground">{t("adminPanel")}</p>
       </div>
       <Separator className="mb-2" />
@@ -158,7 +158,7 @@ export default function DashboardLayout({
               <Menu className="h-5 w-5" />
             )}
           </Button>
-          <h1 className="text-lg font-semibold">Dalla AI</h1>
+          <h1 className="text-lg font-semibold">Dallah</h1>
         </header>
 
         {/* Page content */}

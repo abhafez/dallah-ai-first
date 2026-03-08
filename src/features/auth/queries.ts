@@ -38,13 +38,14 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: (credentials: LoginCredentials) => loginApi(credentials),
-    onSuccess: ({ token, user }) => {
+    onSuccess: ({ token, admin }) => {
       // Store in localStorage for the axios interceptor
       localStorage.setItem("auth_token", token);
       // Store in cookie for the Next.js middleware (non-httpOnly, SameSite)
       document.cookie = `auth_token=${token}; path=/; SameSite=Lax`;
       // Pre-populate the 'me' query so no extra fetch is needed
-      queryClient.setQueryData<AuthUser>(authKeys.me(), user);
+      console.log(admin);
+      queryClient.setQueryData<AuthUser>(authKeys.me(), admin);
       router.push("/dashboard");
     },
   });

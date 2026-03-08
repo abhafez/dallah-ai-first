@@ -60,18 +60,11 @@ import {
 } from "@/features/users/schemas";
 import {
   LANGUAGE_OPTIONS,
-  LEVEL_OPTIONS,
-  VEHICLE_OPTIONS,
+  COURSE_OPTIONS,
+  LICENCE_TYPE_OPTIONS,
 } from "@/features/users/constants";
 import type { User, Enrollment } from "@/features/users/types";
-import {
-  Search,
-  Plus,
-  Trash2,
-  RefreshCcw,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { Search, Plus, Trash2, RefreshCcw, CheckCircle } from "lucide-react";
 
 export default function EnrollmentsPage() {
   const t = useTranslations("Enrollments");
@@ -96,20 +89,20 @@ export default function EnrollmentsPage() {
     resolver: zodResolver(createEnrollmentSchema),
     defaultValues: {
       userId: "",
-      language: undefined,
-      level: undefined,
-      vehicle: undefined,
-    },
+      lang: undefined,
+      licence_type: undefined,
+      course_code: undefined,
+    } as any,
   });
 
   const replaceForm = useForm<CreateEnrollmentFormValues>({
     resolver: zodResolver(createEnrollmentSchema),
     defaultValues: {
       userId: "",
-      language: undefined,
-      level: undefined,
-      vehicle: undefined,
-    },
+      lang: undefined,
+      licence_type: undefined,
+      course_code: undefined,
+    } as any,
   });
 
   function handleSearch() {
@@ -169,7 +162,6 @@ export default function EnrollmentsPage() {
     setReplaceTarget(enrollment);
   }
 
-  // Reusable dropdown fields renderer
   function renderEnrollmentFields(
     form: ReturnType<typeof useForm<CreateEnrollmentFormValues>>,
   ) {
@@ -177,14 +169,14 @@ export default function EnrollmentsPage() {
       <>
         <FormField
           control={form.control}
-          name="language"
+          name="lang"
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("language")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder={t("languagePlaceholder")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -201,18 +193,18 @@ export default function EnrollmentsPage() {
         />
         <FormField
           control={form.control}
-          name="level"
+          name="licence_type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("level")}</FormLabel>
+              <FormLabel>{t("vehicle")}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder={t("vehiclePlaceholder")} />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {LEVEL_OPTIONS.map((o) => (
+                  {LICENCE_TYPE_OPTIONS.map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {locale === "ar" ? o.labelAr : o.labelEn}
                     </SelectItem>
@@ -225,27 +217,38 @@ export default function EnrollmentsPage() {
         />
         <FormField
           control={form.control}
-          name="vehicle"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("vehicle")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {VEHICLE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {locale === "ar" ? o.labelAr : o.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
+          name="course_code"
+          render={({ field }) => {
+            const selectedType = form.watch("licence_type");
+            const filteredCourses = COURSE_OPTIONS.filter(
+              (c) => !selectedType || c.type === selectedType,
+            );
+
+            return (
+              <FormItem>
+                <FormLabel>{t("level")}</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  disabled={!selectedType}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("levelPlaceholder")} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {filteredCourses.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {locale === "ar" ? o.labelAr : o.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
       </>
     );
@@ -365,11 +368,21 @@ export default function EnrollmentsPage() {
                         <TableCell>{enrollment.courseTitle}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">
-                            {enrollment.language}
+                            {LANGUAGE_OPTIONS.find(
+                              (l) => l.value === enrollment.lang,
+                            )?.labelEn || enrollment.lang}
                           </Badge>
                         </TableCell>
-                        <TableCell>{enrollment.level}</TableCell>
-                        <TableCell>{enrollment.vehicle}</TableCell>
+                        <TableCell>
+                          {COURSE_OPTIONS.find(
+                            (c) => c.value === enrollment.course_code,
+                          )?.labelEn || enrollment.course_code}
+                        </TableCell>
+                        <TableCell>
+                          {LICENCE_TYPE_OPTIONS.find(
+                            (t) => t.value === enrollment.licence_type,
+                          )?.labelEn || enrollment.licence_type}
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
@@ -434,7 +447,7 @@ export default function EnrollmentsPage() {
           </DialogHeader>
           <Form {...createForm}>
             <form
-              onSubmit={createForm.handleSubmit(handleCreateEnrollment)}
+              onSubmit={createForm.handleSubmit(handleCreateEnrollment) as any}
               className="space-y-4"
             >
               {renderEnrollmentFields(createForm)}
@@ -462,7 +475,9 @@ export default function EnrollmentsPage() {
           </DialogHeader>
           <Form {...replaceForm}>
             <form
-              onSubmit={replaceForm.handleSubmit(handleReplaceEnrollment)}
+              onSubmit={
+                replaceForm.handleSubmit(handleReplaceEnrollment) as any
+              }
               className="space-y-4"
             >
               {renderEnrollmentFields(replaceForm)}
