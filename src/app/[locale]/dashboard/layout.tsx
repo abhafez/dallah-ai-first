@@ -7,6 +7,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useLogout } from "@/features/auth/queries";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -127,15 +128,15 @@ export default function DashboardLayout({
             )}
             <div className="flex items-center gap-2">
               <LanguageSwitcher />
+              <ModeToggle />
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => logout.mutate()}
                 disabled={logout.isPending}
-                className="flex items-center gap-1"
+                title={t("logout")}
               >
-                <LogOut className="h-3.5 w-3.5" />
-                {logout.isPending ? t("signingOut") : t("signOut")}
+                <LogOut className="h-5 w-5" />
               </Button>
             </div>
           </div>
