@@ -8,16 +8,16 @@ test.describe("Authentication Flow", () => {
     await context.clearCookies();
   });
 
-  test("should redirect unauthenticated users from /dashboard to /en/login", async ({
+  test("should redirect unauthenticated users from /dashboard to /login", async ({
     page,
   }) => {
     await page.goto(`${BASE_URL}/dashboard`);
-    // Middleware redirects to /en/login
+    // Middleware redirects to /login
     await expect(page).toHaveURL(/\/login/);
   });
 
   test("should display the login page with form fields", async ({ page }) => {
-    await page.goto(`${BASE_URL}/en/login`);
+    await page.goto(`${BASE_URL}/login`);
     await expect(page.locator("h1")).toContainText(/sign in|login/i);
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await expect(page.locator('input[name="password"]')).toBeVisible();
@@ -27,7 +27,7 @@ test.describe("Authentication Flow", () => {
   test("should show validation errors for empty form submission", async ({
     page,
   }) => {
-    await page.goto(`${BASE_URL}/en/login`);
+    await page.goto(`${BASE_URL}/login`);
     await page.locator('button[type="submit"]').click();
     // Zod validation messages should appear
     await expect(page.locator("p[data-slot='form-message']").first()).toBeVisible();
@@ -36,7 +36,7 @@ test.describe("Authentication Flow", () => {
   test("should show an error message on invalid credentials", async ({
     page,
   }) => {
-    await page.goto(`${BASE_URL}/en/login`);
+    await page.goto(`${BASE_URL}/login`);
     await page.locator('input[name="email"]').fill("wrong@example.com");
     await page.locator('input[name="password"]').fill("wrongpassword1");
     await page.locator('button[type="submit"]').click();
@@ -46,7 +46,7 @@ test.describe("Authentication Flow", () => {
     ).toBeVisible({ timeout: 5000 });
   });
 
-  test("should redirect authenticated users away from /en/login to /en/dashboard", async ({
+  test("should redirect authenticated users away from /login to /dashboard", async ({
     page,
     context,
   }) => {
@@ -59,8 +59,8 @@ test.describe("Authentication Flow", () => {
         path: "/",
       },
     ]);
-    await page.goto(`${BASE_URL}/en/login`);
-    await expect(page).toHaveURL(`${BASE_URL}/en/dashboard`);
+    await page.goto(`${BASE_URL}/login`);
+    await expect(page).toHaveURL(`${BASE_URL}/dashboard`);
   });
 });
 

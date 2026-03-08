@@ -30,7 +30,9 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
       document.cookie = "auth_token=; path=/; max-age=0";
-      window.location.href = "/login";
+      if (process.env.NODE_ENV !== "test") {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

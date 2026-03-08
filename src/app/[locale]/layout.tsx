@@ -8,6 +8,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { MswProvider } from "@/providers/msw-provider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -47,16 +48,22 @@ export default async function RootLayout({
   // Determine direction based on locale
   const dir = locale === "ar" ? "rtl" : "ltr";
 
+  const isDev = process.env.NODE_ENV === "development";
+
+  const appContent = (
+    <NextIntlClientProvider messages={messages}>
+      <QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryProvider>
+    </NextIntlClientProvider>
+  );
+
   return (
     <html lang={locale} dir={dir} className={cn("font-sans", inter.variable)}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NextIntlClientProvider messages={messages}>
-          <QueryProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </QueryProvider>
-        </NextIntlClientProvider>
+        {isDev ? <MswProvider>{appContent}</MswProvider> : appContent}
       </body>
     </html>
   );
