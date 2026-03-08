@@ -1,0 +1,14 @@
+# Antigravity Rules
+
+## Test-Driven Development (TDD)
+- **Strict TDD Workflow**: Always follow the Red-Green-Refactor cycle. 
+  1. **Red**: Write a failing test for the new functionality or bug fix before writing any implementation code. Run the test to confirm it fails as expected.
+  2. **Green**: Write the minimal amount of implementation code required to make the test pass.
+  3. **Refactor**: Clean up and optimize the implementation while continually running the tests to ensure they remain passing.
+- **Unit & Integration Tests**: Use the existing test runner (Vitest) for component and logic-level tests.
+
+## Playwright & MCP Integration
+- **E2E Testing Focus**: Use Playwright for all end-to-end user flows. Store these tests in the `e2e/` directory.
+- **Playwright MCP**: Utilize the Playwright Model Context Protocol (MCP) server capabilities to execute tests, inspect application state, and verify UI correctness directly through browser interactions.
+- **Test Execution**: When asked to verify an application flow, favor using Playwright MCP to spin up the browser, navigate the app, and run test assertions automatically.
+- **UI Validation**: Always validate new frontend features by writing Playwright tests first, and use MCP tools to ensure the application behaves and looks as intended.
