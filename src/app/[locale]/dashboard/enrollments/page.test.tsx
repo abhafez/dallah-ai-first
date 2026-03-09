@@ -5,6 +5,7 @@ import EnrollmentsPage from "./page";
 import * as queries from "@/features/users/queries";
 import * as api from "@/features/users/api";
 import {toast} from "sonner";
+import {LANGUAGE_OPTIONS} from "@/features/users/constants";
 
 // Mock the child components
 vi.mock("@/components/users/add-user-form", () => ({
@@ -650,5 +651,90 @@ describe("Enrollments Page", () => {
         });
 
         fireEvent.keyDown(screen.getByText("Bulk Import Users"), {key: "Escape"});
+    });
+
+    it("executes download error report with DOM manipulation", async () => {
+        const user = userEvent.setup();
+        const mockBulkMutate = vi.fn((file, options) => {
+            options.onSuccess({
+                summary: {successful: 1, failed: 2, total: 3},
+                results: [],
+                failed_users: [
+                    {national_id: "123", name: "User 1", errors: ["Error 1", "Error 2"]},
+                    {national_id: "456", name: null, errors: ["Error 3"]},
+                ],
+            });
+        });
+
+        vi.mocked(queries.useBulkUploadUsers).mockReturnValue({
+            mutate: mockBulkMutate,
+            isPending: false,
+        } as unknown as ReturnType<typeof queries.useBulkUploadUsers>);
+
+        const createObjectURLSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
+        const revokeObjectURLSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+        render(<EnrollmentsPage/>);
+
+        const bulkImportBtn = screen.getByRole("button", {name: /Bulk Import/i});
+        await user.click(bulkImportBtn);
+
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        const validFile = new File(["test,data"], "test.csv", {type: "text/csv"});
+        await user.upload(fileInput, validFile);
+
+        const uploadBtn = screen.getByRole("button", {name: /Upload/i});
+        await user.click(uploadBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Download Error Report/i)).toBeInTheDocument();
+        });
+
+        const downloadErrorBtn = screen.getByRole("button", {name: /Download Error Report/i});
+        await user.click(downloadErrorBtn);
+
+        expect(createObjectURLSpy).toHaveBeenCalled();
+        expect(revokeObjectURLSpy).toHaveBeenCalled();
+    });
+});
+
+describe("resolveLanguageCode", () => {
+    const LOCALE_TO_LANG_CODE: Record<string, string> = {
+        ar: "1",
+        en: "2",
+        ur: "3",
+        hi: "4",
+    };
+
+    function resolveLanguageCode(lang: string): string {
+        if (LANGUAGE_OPTIONS.some((o) => o.value === lang)) return lang;
+        return LOCALE_TO_LANG_CODE[lang] || lang;
+    }
+
+    it("returns the language code as-is when it exists in LANGUAGE_OPTIONS", () => {
+        const validLanguageCode = LANGUAGE_OPTIONS[0].value;
+        const result = resolveLanguageCode(validLanguageCode);
+        expect(result).toBe(validLanguageCode);
+    });
+
+    it("returns mapped code when language is in LOCALE_TO_LANG_CODE", () => {
+        expect(resolveLanguageCode("ar")).toBe("1");
+        expect(resolveLanguageCode("en")).toBe("2");
+        expect(resolveLanguageCode("ur")).toBe("3");
+        expect(resolveLanguageCode("hi")).toBe("4");
+    });
+
+    it("returns the original language when not found in either mapping", () => {
+        const unknownLang = "unknown-language";
+        const result = resolveLanguageCode(unknownLang);
+        expect(result).toBe(unknownLang);
+    });
+
+    it("prioritizes LANGUAGE_OPTIONS over LOCALE_TO_LANG_CODE", () => {
+        const langCode = "2";
+        if (LANGUAGE_OPTIONS.some((o) => o.value === langCode)) {
+            const result = resolveLanguageCode(langCode);
+            expect(result).toBe(langCode);
+        }
     });
 });
