@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import {toast} from "sonner";
 import * as api from "@/features/users/api";
 import * as queries from "@/features/users/queries";
+import { downloadErrorReportForResult } from "./page";
 
 vi.mock("sonner", () => ({
     toast: {
@@ -102,6 +103,7 @@ describe("Bulk Import Page", () => {
         const uploadBtn = screen.getByRole("button", {name: /uploadButton/i});
         await user.click(uploadBtn);
 
+        expect(screen.getByText("noFile")).toBeInTheDocument();
         expect(mockMutate).not.toHaveBeenCalled();
     });
 
@@ -127,10 +129,10 @@ describe("Bulk Import Page", () => {
         expect(screen.getByText("uploading")).toBeInTheDocument();
     });
 
-    it("disables upload button when no file is selected", () => {
+    it("keeps upload button enabled when no file is selected", () => {
         render(<BulkImportPage/>);
         const uploadBtn = screen.getByRole("button", {name: /uploadButton/i});
-        expect(uploadBtn).toBeDisabled();
+        expect(uploadBtn).not.toBeDisabled();
     });
 
     it("disables upload button during upload", async () => {
@@ -551,8 +553,193 @@ describe("Bulk Import Results Display", () => {
             expect(screen.getByText("10")).toBeInTheDocument();
             expect(screen.getByText("7")).toBeInTheDocument();
             expect(screen.getByText("3")).toBeInTheDocument();
+});
+});
+
+it("displays failed users in results table", async () => {
+    const user = userEvent.setup();
+    const mockMutate = vi.fn((file, options) => {
+        options.onSuccess({
+            summary: {successful: 0, failed: 2, total: 2},
+            results: [],
+            failed_users: [
+                {national_id: "123", name: "User 1", errors: ["Error 1", "Error 2"]},
+                {national_id: "456", name: "User 2", errors: ["Error 3"]},
+            ],
         });
     });
+
+    vi.mocked(queries.useBulkUploadUsers).mockReturnValue({
+        mutate: mockMutate,
+        isPending: false,
+        isError: false,
+    } as unknown as ReturnType<typeof queries.useBulkUploadUsers>);
+
+    render(<BulkImportPage/>);
+
+    const fileInput = document.querySelector(
+        'input[type="file"]',
+    ) as HTMLInputElement;
+    const validFile = new File(["test,data"], "test.csv", {type: "text/csv"});
+    await user.upload(fileInput, validFile);
+
+    const uploadBtn = screen.getByRole("button", {name: /uploadButton/i});
+    await user.click(uploadBtn);
+
+    await waitFor(() => {
+        expect(screen.getByText("failedUsers")).toBeInTheDocument();
+        expect(screen.getByText("Error 1, Error 2")).toBeInTheDocument();
+        expect(screen.getByText("Error 3")).toBeInTheDocument();
+    });
+});
+
+it("downloads error report for failed users", async () => {
+    const user = userEvent.setup();
+    const mockMutate = vi.fn((file, options) => {
+        options.onSuccess({
+            summary: {successful: 1, failed: 2, total: 3},
+            results: [],
+            failed_users: [
+                {national_id: "123", name: "User 1", errors: ["Error 1"]},
+                {national_id: "456", name: null, errors: ["Error 2"]},
+            ],
+        });
+    });
+
+    vi.mocked(queries.useBulkUploadUsers).mockReturnValue({
+        mutate: mockMutate,
+        isPending: false,
+        isError: false,
+    } as unknown as ReturnType<typeof queries.useBulkUploadUsers>);
+
+    render(<BulkImportPage/>);
+
+    const fileInput = document.querySelector(
+        'input[type="file"]',
+    ) as HTMLInputElement;
+    const validFile = new File(["test,data"], "test.csv", {type: "text/csv"});
+    await user.upload(fileInput, validFile);
+
+    const uploadBtn = screen.getByRole("button", {name: /uploadButton/i});
+    await user.click(uploadBtn);
+
+    await waitFor(() => {
+        expect(screen.getByText("downloadErrors")).toBeInTheDocument();
+    });
+
+    const downloadBtn = screen.getByRole("button", {name: /downloadErrors/i});
+    expect(downloadBtn).toBeInTheDocument();
+});
+
+it("executes downloadErrorReport with DOM manipulation and URL creation", async () => {
+    const user = userEvent.setup();
+    const mockMutate = vi.fn((file, options) => {
+        options.onSuccess({
+            summary: {successful: 1, failed: 2, total: 3},
+            results: [],
+            failed_users: [
+                {national_id: "123", name: "User 1", errors: ["Error 1", "Error 2"]},
+                {national_id: "456", name: null, errors: ["Error 3"]},
+            ],
+        });
+    });
+
+    vi.mocked(queries.useBulkUploadUsers).mockReturnValue({
+        mutate: mockMutate,
+        isPending: false,
+        isError: false,
+    } as unknown as ReturnType<typeof queries.useBulkUploadUsers>);
+
+    const createObjectURLSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
+    const revokeObjectURLSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    render(<BulkImportPage />);
+
+    const fileInput = document.querySelector(
+        'input[type="file"]',
+    ) as HTMLInputElement;
+    const validFile = new File(["test,data"], "test.csv", {type: "text/csv"});
+    await user.upload(fileInput, validFile);
+
+    const uploadBtn = screen.getByRole("button", {name: /uploadButton/i});
+    await user.click(uploadBtn);
+
+    await waitFor(() => {
+        expect(screen.getByText("downloadErrors")).toBeInTheDocument();
+    });
+
+    const downloadBtn = screen.getByRole("button", {name: /downloadErrors/i});
+    await user.click(downloadBtn);
+
+    expect(createObjectURLSpy).toHaveBeenCalled();
+    expect(revokeObjectURLSpy).toHaveBeenCalled();
+});
+
+it("does not show download error button when no failed users", async () => {
+    const user = userEvent.setup();
+    const mockMutate = vi.fn((file, options) => {
+        options.onSuccess({
+            summary: {successful: 2, failed: 0, total: 2},
+            results: [{national_id: "123"}],
+            failed_users: [],
+        });
+    });
+
+    vi.mocked(queries.useBulkUploadUsers).mockReturnValue({
+        mutate: mockMutate,
+        isPending: false,
+        isError: false,
+    } as unknown as ReturnType<typeof queries.useBulkUploadUsers>);
+
+    render(<BulkImportPage />);
+
+    const fileInput = document.querySelector(
+        'input[type="file"]',
+    ) as HTMLInputElement;
+    const validFile = new File(["test,data"], "test.csv", {type: "text/csv"});
+    await user.upload(fileInput, validFile);
+
+    const uploadBtn = screen.getByRole("button", {name: /uploadButton/i});
+    await user.click(uploadBtn);
+
+    await waitFor(() => {
+        expect(screen.queryByText("downloadErrors")).not.toBeInTheDocument();
+    });
+});
+
+it("displays summary statistics correctly", async () => {
+    const user = userEvent.setup();
+    const mockMutate = vi.fn((file, options) => {
+        options.onSuccess({
+            summary: {successful: 7, failed: 3, total: 10},
+            results: [],
+            failed_users: [],
+        });
+    });
+
+    vi.mocked(queries.useBulkUploadUsers).mockReturnValue({
+        mutate: mockMutate,
+        isPending: false,
+        isError: false,
+    } as unknown as ReturnType<typeof queries.useBulkUploadUsers>);
+
+    render(<BulkImportPage />);
+
+    const fileInput = document.querySelector(
+        'input[type="file"]',
+    ) as HTMLInputElement;
+    const validFile = new File(["test,data"], "test.csv", {type: "text/csv"});
+    await user.upload(fileInput, validFile);
+
+    const uploadBtn = screen.getByRole("button", {name: /uploadButton/i});
+    await user.click(uploadBtn);
+
+    await waitFor(() => {
+        expect(screen.getByText("10")).toBeInTheDocument();
+        expect(screen.getByText("7")).toBeInTheDocument();
+        expect(screen.getByText("3")).toBeInTheDocument();
+    });
+});
 });
 
 describe("downloadErrorReport function", () => {
@@ -564,12 +751,7 @@ describe("downloadErrorReport function", () => {
         const createObjectURLSpy = vi.spyOn(URL, "createObjectURL");
         const createElementSpy = vi.spyOn(document, "createElement");
 
-        const result = null;
-        const downloadErrorReport = () => {
-            if (!result || !result.failed_users.length) return;
-        };
-
-        downloadErrorReport();
+        downloadErrorReportForResult(null);
 
         expect(createObjectURLSpy).not.toHaveBeenCalled();
         expect(createElementSpy).not.toHaveBeenCalled();
@@ -579,12 +761,11 @@ describe("downloadErrorReport function", () => {
         const createObjectURLSpy = vi.spyOn(URL, "createObjectURL");
         const createElementSpy = vi.spyOn(document, "createElement");
 
-        const result = {failed_users: []};
-        const downloadErrorReport = () => {
-            if (!result || !result.failed_users.length) return;
-        };
-
-        downloadErrorReport();
+        downloadErrorReportForResult({
+            summary: {total: 0, successful: 0, failed: 0},
+            results: [],
+            failed_users: [],
+        });
 
         expect(createObjectURLSpy).not.toHaveBeenCalled();
         expect(createElementSpy).not.toHaveBeenCalled();

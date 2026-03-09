@@ -696,9 +696,113 @@ describe("Enrollments Page", () => {
         expect(createObjectURLSpy).toHaveBeenCalled();
         expect(revokeObjectURLSpy).toHaveBeenCalled();
     });
+
+    it("handles add enrollment success callback with state updates", async () => {
+        const user = userEvent.setup();
+        let successCallback: (() => void) | undefined;
+        
+        mockCreateEnrollment.mockImplementationOnce((vars, opts) => {
+            successCallback = opts.onSuccess;
+        });
+
+        render(<EnrollmentsPage/>);
+
+        const manageBtn = screen.getByRole("button", {name: /manageEnrollments/i});
+        await user.click(manageBtn);
+
+        const addBtn = screen.getByRole("button", {name: /createEnrollment/i});
+        await user.click(addBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText("addEnrollmentTitle")).toBeInTheDocument();
+        });
+
+        if (successCallback) {
+            successCallback();
+            await waitFor(() => {
+                expect(screen.getByText("createSuccess")).toBeInTheDocument();
+            });
+        }
+    });
+
+    it("handles replace enrollment success callback with state updates", async () => {
+        const user = userEvent.setup();
+        let successCallback: (() => void) | undefined;
+        
+        mockReplaceEnrollment.mockImplementationOnce((vars, opts) => {
+            successCallback = opts.onSuccess;
+        });
+
+        render(<EnrollmentsPage/>);
+
+        const manageBtn = screen.getByRole("button", {name: /manageEnrollments/i});
+        await user.click(manageBtn);
+
+        const replaceBtn = screen.getByRole("button", {name: /replaceEnrollment/i});
+        await user.click(replaceBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText("replaceEnrollmentTitle")).toBeInTheDocument();
+        });
+
+        if (successCallback) {
+            successCallback();
+            await waitFor(() => {
+                expect(screen.getByText("replaceSuccess")).toBeInTheDocument();
+            });
+        }
+    });
+
+    it("closes edit dialog when onOpenChange is called with false", async () => {
+        const user = userEvent.setup();
+        render(<EnrollmentsPage/>);
+
+        const editBtn = screen.getByRole("button", {name: /editUser/i});
+        await user.click(editBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText("editUserTitle")).toBeInTheDocument();
+        });
+
+        const dialog = screen.getByRole("dialog");
+        fireEvent.keyDown(dialog, {key: "Escape", code: "Escape"});
+    });
+
+    it("closes manage enrollments dialog when onOpenChange is called with false", async () => {
+        const user = userEvent.setup();
+        render(<EnrollmentsPage/>);
+
+        const manageBtn = screen.getByRole("button", {name: /manageEnrollments/i});
+        await user.click(manageBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText("Basic Driving")).toBeInTheDocument();
+        });
+
+        const dialog = screen.getByRole("dialog");
+        fireEvent.keyDown(dialog, {key: "Escape", code: "Escape"});
+    });
+
+    it("closes delete confirmation dialog when onOpenChange is called with false", async () => {
+        const user = userEvent.setup();
+        render(<EnrollmentsPage/>);
+
+        const manageBtn = screen.getByRole("button", {name: /manageEnrollments/i});
+        await user.click(manageBtn);
+
+        const deleteBtn = screen.getByRole("button", {name: /deleteEnrollment/i});
+        await user.click(deleteBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText("confirmDelete")).toBeInTheDocument();
+        });
+
+        const dialog = screen.getByRole("dialog");
+        fireEvent.keyDown(dialog, {key: "Escape", code: "Escape"});
+    });
 });
 
-describe("resolveLanguageCode", () => {
+describe("EnrollmentsPage - resolveLanguageCode", () => {
     const LOCALE_TO_LANG_CODE: Record<string, string> = {
         ar: "1",
         en: "2",

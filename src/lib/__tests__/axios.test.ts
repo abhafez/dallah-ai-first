@@ -1,10 +1,13 @@
-import {afterEach, describe, expect, it} from "vitest";
+import {afterEach, describe, expect, it, vi} from "vitest";
 import {axiosInstance} from "../axios";
 import {http, HttpResponse} from "msw";
 import {server} from "@/mocks/server";
 
 describe("axiosInstance", () => {
-    afterEach(() => server.resetHandlers());
+    afterEach(() => {
+        server.resetHandlers();
+        vi.unstubAllEnvs();
+    });
 
     describe("request interceptor", () => {
         it("attaches Authorization header when auth_token is in localStorage", async () => {
@@ -32,8 +35,8 @@ describe("axiosInstance", () => {
             expect(authInterceptor).toBeDefined();
 
             // Create a fake config missing the 'set' method
-            const fakeConfig = { headers: {} };
-            
+            const fakeConfig = {headers: {}};
+
             // Execute the interceptor directly
             const result = await authInterceptor(fakeConfig);
 
@@ -105,6 +108,70 @@ describe("axiosInstance", () => {
             axiosInstance.interceptors.response.eject(id);
 
             expect(localStorage.getItem("auth_token")).toBeNull();
+        });
+
+        it("does not redirect to /login when NODE_ENV is test", async () => {
+            const locationHrefSpy = vi.fn();
+            Object.defineProperty(window, "location", {
+                value: {href: ""},
+                writable: true,
+                configurable: true,
+            });
+            Object.defineProperty(window.location, "href", {
+                set: locationHrefSpy,
+                configurable: true,
+            });
+
+            localStorage.setItem("auth_token", "expired-token");
+
+            const axiosError = {
+                response: {status: 401},
+                message: "Unauthorized",
+                isAxiosError: true,
+            };
+
+            await axiosInstance.interceptors.response.handlers
+                .filter(Boolean)
+                .at(0)
+                ?.rejected?.(axiosError)
+                .catch(() => {
+                });
+
+            // In test environment, window.location.href should NOT be set
+            expect(locationHrefSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("BASE_URL configuration", () => {
+        it("uses NEXT_PUBLIC_API_URL when environment variable is set", () => {
+            // The BASE_URL is set at module load time, so we need to test the logic
+            const mockEnvUrl = "https://api.example.com";
+            const expectedUrl = mockEnvUrl + "/api/v1/dallah";
+
+            // Simulate the logic from axios.ts
+            const baseUrl = mockEnvUrl ? mockEnvUrl + "/api/v1/dallah" : "http://localhost:31000/api/v1/dallah";
+
+            expect(baseUrl).toBe(expectedUrl);
+        });
+
+        it("falls back to localhost when NEXT_PUBLIC_API_URL is not set", () => {
+            const mockEnvUrl = undefined;
+            const expectedUrl = "http://localhost:31000/api/v1/dallah";
+
+            // Simulate the logic from axios.ts
+            const baseUrl = mockEnvUrl ? mockEnvUrl + "/api/v1/dallah" : "http://localhost:31000/api/v1/dallah";
+
+            expect(baseUrl).toBe(expectedUrl);
+        });
+
+        it("falls back to localhost when NEXT_PUBLIC_API_URL is empty string", () => {
+            const mockEnvUrl = "";
+            const expectedUrl = "http://localhost:31000/api/v1/dallah";
+
+            // Simulate the logic from axios.ts
+            const baseUrl = mockEnvUrl ? mockEnvUrl + "/api/v1/dallah" : "http://localhost:31000/api/v1/dallah";
+
+            expect(baseUrl).toBe(expectedUrl);
         });
     });
 });

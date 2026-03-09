@@ -33,6 +33,22 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+export function downloadErrorReportForResult(result: BulkUploadResponse | null) {
+  if (!result || !result.failed_users.length) return;
+  const csvContent =
+    "national_id,name,errors\n" +
+    result.failed_users
+      .map((u) => `${u.national_id},${u.name || ""},${u.errors.join("; ")}`)
+      .join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "error_report.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function BulkImportPage() {
   const t = useTranslations("BulkImport");
   const bulkUpload = useBulkUploadUsers();
@@ -99,19 +115,7 @@ export default function BulkImportPage() {
   }
 
   function downloadErrorReport() {
-    if (!result || !result.failed_users.length) return;
-    const csvContent =
-      "national_id,name,errors\n" +
-      result.failed_users
-        .map((u) => `${u.national_id},${u.name || ""},${u.errors.join("; ")}`)
-        .join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "error_report.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadErrorReportForResult(result);
   }
 
   return (
@@ -158,7 +162,7 @@ export default function BulkImportPage() {
             </div>
             <Button
               onClick={handleUpload}
-              disabled={!selectedFile || bulkUpload.isPending}
+              disabled={bulkUpload.isPending}
             >
               {bulkUpload.isPending ? (
                 <>
