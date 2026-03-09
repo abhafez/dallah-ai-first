@@ -62,10 +62,9 @@ describe("addUserSchema", () => {
 describe("createEnrollmentSchema", () => {
   it("should validate a correct enrollment payload", () => {
     const validData = {
-      userId: "u123",
       lang: "1",
       licence_type: "private",
-      course_code: "P6h",
+      dallah_course_code: "P6h",
     };
     const result = createEnrollmentSchema.safeParse(validData);
     expect(result.success).toBe(true);
@@ -73,10 +72,19 @@ describe("createEnrollmentSchema", () => {
 
   it("should fail with invalid licence type", () => {
     const invalidData = {
-      userId: "u123",
       lang: "1",
       licence_type: "expert", // not in enum
-      course_code: "P6h",
+      dallah_course_code: "P6h",
+    };
+    const result = createEnrollmentSchema.safeParse(invalidData);
+    expect(result.success).toBe(false);
+  });
+
+  it("should fail when dallah_course_code is empty", () => {
+    const invalidData = {
+      lang: "1",
+      licence_type: "private",
+      dallah_course_code: "",
     };
     const result = createEnrollmentSchema.safeParse(invalidData);
     expect(result.success).toBe(false);

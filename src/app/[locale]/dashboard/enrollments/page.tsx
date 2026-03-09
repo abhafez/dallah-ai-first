@@ -6,13 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -48,14 +42,17 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
+  useListUsers,
   useSearchUsers,
-  useUserEnrollments,
+  useUpdateUser,
   useCreateEnrollment,
   useDeleteEnrollment,
   useReplaceEnrollment,
 } from "@/features/users/queries";
 import {
+  updateUserSchema,
   createEnrollmentSchema,
+  type UpdateUserFormValues,
   type CreateEnrollmentFormValues,
 } from "@/features/users/schemas";
 import {
@@ -63,182 +60,214 @@ import {
   COURSE_OPTIONS,
   LICENCE_TYPE_OPTIONS,
 } from "@/features/users/constants";
-import type { User, Enrollment } from "@/features/users/types";
-import { Search, Plus, Trash2, RefreshCcw, CheckCircle } from "lucide-react";
+import { langNameToCode } from "@/features/users/api";
+import type { User, ApiUserEnrollment } from "@/features/users/types";
+import {
+  Search,
+  Plus,
+  Trash2,
+  RefreshCcw,
+  CheckCircle,
+  Pencil,
+  ListChecks,
+  RotateCcw,
+} from "lucide-react";
+
+const LOCALE_TO_LANG_CODE: Record<string, string> = {
+  ar: "1",
+  en: "2",
+  ur: "3",
+  hi: "4",
+};
+
+function resolveLanguageCode(lang: string): string {
+  if (LANGUAGE_OPTIONS.some((o) => o.value === lang)) return lang;
+  return LOCALE_TO_LANG_CODE[lang] || lang;
+}
 
 export default function EnrollmentsPage() {
   const t = useTranslations("Enrollments");
   const locale = useLocale();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Enrollment | null>(null);
-  const [replaceTarget, setReplaceTarget] = useState<Enrollment | null>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  const [editTarget, setEditTarget] = useState<User | null>(null);
+  const [enrollmentsUser, setEnrollmentsUser] = useState<User | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiUserEnrollment | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<ApiUserEnrollment | null>(null);
+  const [showAddEnrollment, setShowAddEnrollment] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const { data: users, isLoading: searchLoading } =
-    useSearchUsers(activeSearch);
-  const { data: enrollments, isLoading: enrollmentsLoading } =
-    useUserEnrollments(selectedUser?.id || "");
+  const { data: allUsers, isLoading: allLoading, refetch } = useListUsers();
+  const { data: searchResults, isLoading: searchLoading } = useSearchUsers(activeSearch);
+
+  const isSearchActive = activeSearch.length >= 2;
+  const displayedUsers = isSearchActive ? searchResults : allUsers;
+  const isLoading = isSearchActive ? searchLoading : allLoading;
+
+  const updateUser = useUpdateUser();
   const createEnrollment = useCreateEnrollment();
   const deleteEnrollment = useDeleteEnrollment();
   const replaceEnrollment = useReplaceEnrollment();
 
-  const createForm = useForm<CreateEnrollmentFormValues>({
+  const editForm = useForm<UpdateUserFormValues>({
+    resolver: zodResolver(updateUserSchema),
+    defaultValues: { name: "", mobile: "", lang: "" },
+  });
+
+  const addEnrollmentForm = useForm<CreateEnrollmentFormValues>({
     resolver: zodResolver(createEnrollmentSchema),
-    defaultValues: {
-      userId: "",
-      lang: undefined,
-      licence_type: undefined,
-      course_code: undefined,
-    } as any,
+    defaultValues: { lang: "", licence_type: undefined as any, dallah_course_code: "" },
   });
 
   const replaceForm = useForm<CreateEnrollmentFormValues>({
     resolver: zodResolver(createEnrollmentSchema),
-    defaultValues: {
-      userId: "",
-      lang: undefined,
-      licence_type: undefined,
-      course_code: undefined,
-    } as any,
+    defaultValues: { lang: "", licence_type: undefined as any, dallah_course_code: "" },
   });
 
   function handleSearch() {
     setActiveSearch(searchQuery);
-    setSelectedUser(null);
     setSuccessMsg(null);
   }
 
-  function handleSelectUser(user: User) {
-    setSelectedUser(user);
+  function handleRefresh() {
+    setActiveSearch("");
+    setSearchQuery("");
+    refetch();
     setSuccessMsg(null);
   }
 
-  function handleCreateEnrollment(values: CreateEnrollmentFormValues) {
-    createEnrollment.mutate(values, {
-      onSuccess: () => {
-        setSuccessMsg(t("createSuccess"));
-        setShowCreateDialog(false);
-        createForm.reset();
-      },
+  function openEditDialog(user: User) {
+    editForm.reset({
+      name: user.name,
+      mobile: user.mobile,
+      lang: resolveLanguageCode(user.language),
     });
+    setEditTarget(user);
+    setSuccessMsg(null);
+  }
+
+  function openManageEnrollments(user: User) {
+    setEnrollmentsUser(user);
+    setSuccessMsg(null);
+  }
+
+  function handleEditUser(values: UpdateUserFormValues) {
+    if (!editTarget) return;
+    updateUser.mutate(
+      { current_national_id: editTarget.nationalId, ...values },
+      {
+        onSuccess: () => {
+          setSuccessMsg(t("editSuccess"));
+          setEditTarget(null);
+        },
+      },
+    );
   }
 
   function handleDeleteEnrollment() {
-    if (!deleteTarget) return;
-    deleteEnrollment.mutate(deleteTarget.id, {
-      onSuccess: () => {
-        setSuccessMsg(t("deleteSuccess"));
-        setDeleteTarget(null);
+    if (!deleteTarget || !enrollmentsUser) return;
+    deleteEnrollment.mutate(
+      {
+        national_id: enrollmentsUser.nationalId,
+        dallah_course_code: deleteTarget.course.dallah_course_code,
+        lang: langNameToCode(deleteTarget.course.language),
+        licence_type: deleteTarget.course.category,
       },
-    });
+      {
+        onSuccess: () => {
+          setSuccessMsg(t("deleteSuccess"));
+          setDeleteTarget(null);
+          setEnrollmentsUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  enrollments: prev.enrollments?.filter((e) => e.id !== deleteTarget.id),
+                }
+              : null,
+          );
+        },
+      },
+    );
+  }
+
+  function handleAddEnrollment(values: CreateEnrollmentFormValues) {
+    if (!enrollmentsUser) return;
+    createEnrollment.mutate(
+      {
+        national_id: enrollmentsUser.nationalId,
+        dallah_course_code: values.dallah_course_code,
+        lang: values.lang,
+        licence_type: values.licence_type,
+      },
+      {
+        onSuccess: () => {
+          setSuccessMsg(t("createSuccess"));
+          setShowAddEnrollment(false);
+          setEnrollmentsUser(null);
+          addEnrollmentForm.reset();
+        },
+      },
+    );
   }
 
   function handleReplaceEnrollment(values: CreateEnrollmentFormValues) {
-    if (!replaceTarget) return;
+    if (!replaceTarget || !enrollmentsUser) return;
     replaceEnrollment.mutate(
-      { enrollmentId: replaceTarget.id, ...values },
+      {
+        national_id: enrollmentsUser.nationalId,
+        old: {
+          dallah_course_code: replaceTarget.course.dallah_course_code,
+          lang: langNameToCode(replaceTarget.course.language),
+          licence_type: replaceTarget.course.category,
+        },
+        new: {
+          dallah_course_code: values.dallah_course_code,
+          lang: values.lang,
+          licence_type: values.licence_type,
+        },
+      },
       {
         onSuccess: () => {
           setSuccessMsg(t("replaceSuccess"));
           setReplaceTarget(null);
+          setEnrollmentsUser(null);
           replaceForm.reset();
         },
       },
     );
   }
 
-  function openCreateDialog() {
-    if (!selectedUser) return;
-    createForm.setValue("userId", selectedUser.id);
-    setShowCreateDialog(true);
+  function getLangLabel(lang: string): string {
+    const code = resolveLanguageCode(lang);
+    const opt = LANGUAGE_OPTIONS.find((o) => o.value === code);
+    return opt ? (locale === "ar" ? opt.labelAr : opt.labelEn) : lang;
   }
 
-  function openReplaceDialog(enrollment: Enrollment) {
-    if (!selectedUser) return;
-    replaceForm.setValue("userId", selectedUser.id);
-    setReplaceTarget(enrollment);
-  }
-
-  function renderEnrollmentFields(
+  function renderEnrollmentForm(
     form: ReturnType<typeof useForm<CreateEnrollmentFormValues>>,
+    onSubmit: (v: CreateEnrollmentFormValues) => void,
+    isPending: boolean,
+    submitLabel: string,
   ) {
     return (
-      <>
-        <FormField
-          control={form.control}
-          name="lang"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("language")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("languagePlaceholder")} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {LANGUAGE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {locale === "ar" ? o.labelAr : o.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="licence_type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("vehicle")}</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("vehiclePlaceholder")} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {LICENCE_TYPE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {locale === "ar" ? o.labelAr : o.labelEn}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="course_code"
-          render={({ field }) => {
-            const selectedType = form.watch("licence_type");
-            const filteredCourses = COURSE_OPTIONS.filter(
-              (c) => !selectedType || c.type === selectedType,
-            );
-
-            return (
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit) as any} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="lang"
+            render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("level")}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={!selectedType}
-                >
+                <FormLabel>{t("courseLanguage")}</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={t("levelPlaceholder")} />
+                      <SelectValue placeholder={t("languagePlaceholder")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {filteredCourses.map((o) => (
+                    {LANGUAGE_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value}>
                         {locale === "ar" ? o.labelAr : o.labelEn}
                       </SelectItem>
@@ -247,10 +276,78 @@ export default function EnrollmentsPage() {
                 </Select>
                 <FormMessage />
               </FormItem>
-            );
-          }}
-        />
-      </>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="licence_type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("licenceType")}</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("languagePlaceholder")} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {LICENCE_TYPE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {locale === "ar" ? o.labelAr : o.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="dallah_course_code"
+            render={({ field }) => {
+              const selectedType = form.watch("licence_type");
+              const filteredCourses = COURSE_OPTIONS.filter(
+                (c) => !selectedType || c.type === selectedType,
+              );
+              return (
+                <FormItem>
+                  <FormLabel>{t("course")}</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={!selectedType}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("languagePlaceholder")} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {filteredCourses.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {locale === "ar" ? o.labelAr : o.labelEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                {t("cancel")}
+              </Button>
+            </DialogClose>
+            <Button type="submit" disabled={isPending}>
+              {submitLabel}
+            </Button>
+          </DialogFooter>
+        </form>
+      </Form>
     );
   }
 
@@ -268,7 +365,7 @@ export default function EnrollmentsPage() {
         </Alert>
       )}
 
-      {/* Search */}
+      {/* Search + Refresh */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-2">
@@ -279,116 +376,221 @@ export default function EnrollmentsPage() {
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               dir="ltr"
             />
-            <Button onClick={handleSearch} disabled={searchLoading}>
+            <Button onClick={handleSearch} disabled={isLoading}>
               <Search className="h-4 w-4 mr-2" />
-              {searchLoading ? t("searching") : t("searchButton")}
+              {isLoading && isSearchActive ? t("searching") : t("searchButton")}
+            </Button>
+            <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              {t("refresh")}
             </Button>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Search results */}
-          {users && users.length > 0 && !selectedUser && (
-            <div className="mt-4 rounded-md border">
+      {/* Users Table */}
+      <Card>
+        <CardContent className="pt-6">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">{t("loadingUsers")}</p>
+          ) : displayedUsers && displayedUsers.length > 0 ? (
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead>National ID</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead>{t("name")}</TableHead>
+                    <TableHead>{t("nationalId")}</TableHead>
+                    <TableHead>{t("mobile")}</TableHead>
+                    <TableHead>{t("language")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead>{t("enrollmentsCount")}</TableHead>
+                    <TableHead>{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
+                  {displayedUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell className="font-mono">{user.mobile}</TableCell>
-                      <TableCell className="font-mono">
-                        {user.nationalId}
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell className="font-mono text-sm">{user.nationalId}</TableCell>
+                      <TableCell className="font-mono text-sm">{user.mobile}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{getLangLabel(user.language)}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handleSelectUser(user)}
-                        >
-                          Select
-                        </Button>
+                        <Badge variant="outline">{user.status || "—"}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{user.enrollments?.length ?? 0}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(user)}
+                          >
+                            <Pencil className="h-3 w-3 mr-1" />
+                            {t("editUser")}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => openManageEnrollments(user)}
+                          >
+                            <ListChecks className="h-3 w-3 mr-1" />
+                            {t("manageEnrollments")}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
-          )}
-
-          {users && users.length === 0 && activeSearch && (
-            <p className="mt-4 text-sm text-muted-foreground">
-              {t("noResults")}
-            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("noResults")}</p>
           )}
         </CardContent>
       </Card>
 
-      {/* Selected user enrollments */}
-      {selectedUser && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>
-                  {t("userEnrollments", { name: selectedUser.name })}
-                </CardTitle>
-                <CardDescription>
-                  {selectedUser.mobile} · {selectedUser.nationalId}
-                </CardDescription>
-              </div>
-              <Button onClick={openCreateDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t("createEnrollment")}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {enrollmentsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : enrollments && enrollments.length > 0 ? (
-              <div className="rounded-md border">
+      {/* Edit User Dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("editUserTitle")}</DialogTitle>
+            <DialogDescription>{t("editUserDescription")}</DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form
+              onSubmit={editForm.handleSubmit(handleEditUser) as any}
+              className="space-y-4"
+            >
+              <FormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("nameLabel")}</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="mobile"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("mobileLabel")}</FormLabel>
+                    <FormControl>
+                      <Input {...field} dir="ltr" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="lang"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("languageLabel")}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("languagePlaceholder")} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {LANGUAGE_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {locale === "ar" ? o.labelAr : o.labelEn}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">
+                    {t("cancel")}
+                  </Button>
+                </DialogClose>
+                <Button type="submit" disabled={updateUser.isPending}>
+                  {updateUser.isPending ? t("saving") : t("saveChanges")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Enrollments Dialog */}
+      <Dialog
+        open={!!enrollmentsUser}
+        onOpenChange={(open) => !open && setEnrollmentsUser(null)}
+      >
+        <DialogContent className="max-w-fit min-w-fit">
+          <DialogHeader>
+            <DialogTitle>
+              {enrollmentsUser
+                ? t("manageEnrollmentsTitle", { name: enrollmentsUser.name })
+                : ""}
+            </DialogTitle>
+            <DialogDescription>
+              {enrollmentsUser?.nationalId} · {enrollmentsUser?.mobile}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {enrollmentsUser?.enrollments && enrollmentsUser.enrollments.length > 0 ? (
+              <div className="rounded-md border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("course")}</TableHead>
-                      <TableHead>{t("language")}</TableHead>
-                      <TableHead>{t("level")}</TableHead>
-                      <TableHead>{t("vehicle")}</TableHead>
+                      <TableHead>{t("courseLanguage")}</TableHead>
+                      <TableHead>{t("licenceType")}</TableHead>
+                      <TableHead>{t("enrollmentStatus")}</TableHead>
                       <TableHead>{t("actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {enrollments.map((enrollment) => (
+                    {enrollmentsUser.enrollments.map((enrollment) => (
                       <TableRow key={enrollment.id}>
-                        <TableCell>{enrollment.courseTitle}</TableCell>
+                        <TableCell className="text-sm max-w-fit">
+                          {enrollment.course.course_name}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="secondary">
-                            {LANGUAGE_OPTIONS.find(
-                              (l) => l.value === enrollment.lang,
-                            )?.labelEn || enrollment.lang}
+                            {enrollment.course.language}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {COURSE_OPTIONS.find(
-                            (c) => c.value === enrollment.course_code,
-                          )?.labelEn || enrollment.course_code}
+                          <Badge variant="outline">
+                            {LICENCE_TYPE_OPTIONS.find(
+                              (l) => l.value === enrollment.course.category,
+                            )?.[locale === "ar" ? "labelAr" : "labelEn"] ||
+                              enrollment.course.category}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          {LICENCE_TYPE_OPTIONS.find(
-                            (t) => t.value === enrollment.licence_type,
-                          )?.labelEn || enrollment.licence_type}
+                          <Badge variant="secondary">{enrollment.status}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => openReplaceDialog(enrollment)}
+                              onClick={() => {
+                                replaceForm.reset();
+                                setReplaceTarget(enrollment);
+                              }}
                             >
                               <RefreshCcw className="h-3 w-3 mr-1" />
                               {t("replaceEnrollment")}
@@ -409,16 +611,26 @@ export default function EnrollmentsPage() {
                 </Table>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No enrollments found.
-              </p>
+              <p className="text-sm text-muted-foreground">{t("noEnrollments")}</p>
             )}
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Delete confirmation dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  addEnrollmentForm.reset();
+                  setShowAddEnrollment(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t("createEnrollment")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Enrollment Confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("deleteEnrollment")}</DialogTitle>
@@ -439,58 +651,41 @@ export default function EnrollmentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create enrollment dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("createEnrollment")}</DialogTitle>
-          </DialogHeader>
-          <Form {...createForm}>
-            <form
-              onSubmit={createForm.handleSubmit(handleCreateEnrollment) as any}
-              className="space-y-4"
-            >
-              {renderEnrollmentFields(createForm)}
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">{t("cancel")}</Button>
-                </DialogClose>
-                <Button type="submit" disabled={createEnrollment.isPending}>
-                  {t("createEnrollment")}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Replace enrollment dialog */}
+      {/* Add Enrollment Dialog */}
       <Dialog
-        open={!!replaceTarget}
-        onOpenChange={() => setReplaceTarget(null)}
+        open={showAddEnrollment}
+        onOpenChange={(open) => !open && setShowAddEnrollment(false)}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("replaceEnrollment")}</DialogTitle>
+            <DialogTitle>{t("addEnrollmentTitle")}</DialogTitle>
           </DialogHeader>
-          <Form {...replaceForm}>
-            <form
-              onSubmit={
-                replaceForm.handleSubmit(handleReplaceEnrollment) as any
-              }
-              className="space-y-4"
-            >
-              {renderEnrollmentFields(replaceForm)}
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">{t("cancel")}</Button>
-                </DialogClose>
-                <Button type="submit" disabled={replaceEnrollment.isPending}>
-                  {t("replaceEnrollment")}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          {renderEnrollmentForm(
+            addEnrollmentForm,
+            handleAddEnrollment,
+            createEnrollment.isPending,
+            t("createEnrollment"),
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Replace Enrollment Dialog */}
+      <Dialog open={!!replaceTarget} onOpenChange={(open) => !open && setReplaceTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("replaceEnrollmentTitle")}</DialogTitle>
+            {replaceTarget && (
+              <DialogDescription>
+                {replaceTarget.course.course_name}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {renderEnrollmentForm(
+            replaceForm,
+            handleReplaceEnrollment,
+            replaceEnrollment.isPending,
+            t("replaceEnrollment"),
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -1,40 +1,68 @@
 import { axiosInstance } from "@/lib/axios";
 import type {
   User,
+  ApiUser,
   CreateUserPayload,
   UpdateUserPayload,
   BulkUploadResponse,
-  Enrollment,
   AttendanceRecord,
   CreateEnrollmentPayload,
+  DeleteEnrollmentPayload,
   ReplaceEnrollmentPayload,
   ApiLanguage,
   ApiCourse,
   ApiBranch,
 } from "./types";
 
+const LANG_NAME_TO_CODE: Record<string, string> = {
+  arabic: "1",
+  english: "2",
+  ardu: "3",
+  hendi: "4",
+};
+
+export function langNameToCode(langName: string): string {
+  return LANG_NAME_TO_CODE[langName.toLowerCase()] ?? "1";
+}
+
+function mapApiUser(u: ApiUser): User {
+  return {
+    id: String(u.id),
+    name: u.name,
+    mobile: u.mobile_number,
+    nationalId: u.national_id,
+    language: u.lang || "",
+    level: "",
+    vehicle: "",
+    status: u.status,
+    enrollments: u.enrollments,
+  };
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // User CRUD
 // ──────────────────────────────────────────────────────────────────────────────
 
 export async function createUserApi(payload: CreateUserPayload): Promise<User> {
-  const { data } = await axiosInstance.post<User>("/users", payload);
-  return data;
+  const { data } = await axiosInstance.post<ApiUser>("/users", payload);
+  return mapApiUser(data);
+}
+
+export async function listUsersApi(): Promise<User[]> {
+  const { data } = await axiosInstance.get<{ users: ApiUser[] }>("/users");
+  return data.users.map(mapApiUser);
 }
 
 export async function searchUsersApi(query: string): Promise<User[]> {
-  const { data } = await axiosInstance.get<User[]>("/users/search", {
+  const { data } = await axiosInstance.get<{ users: ApiUser[] }>("/users", {
     params: { q: query },
   });
-  return data;
+  return data.users.map(mapApiUser);
 }
 
-export async function updateUserApi(
-  userId: string,
-  payload: UpdateUserPayload
-): Promise<User> {
-  const { data } = await axiosInstance.put<User>(`/users/${userId}`, payload);
-  return data;
+export async function updateUserApi(payload: UpdateUserPayload): Promise<User> {
+  const { data } = await axiosInstance.patch<ApiUser>("/users", payload);
+  return mapApiUser(data);
 }
 
 export async function bulkUploadUsersApi(
@@ -67,39 +95,50 @@ export async function downloadBulkCsvTemplateApi(): Promise<void> {
 // Enrollments
 // ──────────────────────────────────────────────────────────────────────────────
 
-export async function getUserEnrollmentsApi(
-  userId: string
-): Promise<Enrollment[]> {
-  const { data } = await axiosInstance.get<Enrollment[]>(
-    `/users/${userId}/enrollments`
-  );
-  return data;
-}
-
 export async function createEnrollmentApi(
   payload: CreateEnrollmentPayload
-): Promise<Enrollment> {
-  const { data } = await axiosInstance.post<Enrollment>(
-    "/enrollments",
-    payload
-  );
-  return data;
+): Promise<void> {
+  await axiosInstance.post("/enrollments", {
+    national_id: payload.national_id,
+    courses: [
+      {
+        dallah_course_code: payload.dallah_course_code,
+        lang: payload.lang,
+        licence_type: payload.licence_type,
+      },
+    ],
+  });
 }
 
 export async function deleteEnrollmentApi(
-  enrollmentId: string
+  payload: DeleteEnrollmentPayload
 ): Promise<void> {
-  await axiosInstance.delete(`/enrollments/${enrollmentId}`);
+  await axiosInstance.delete("/enrollments", {
+    data: {
+      national_id: payload.national_id,
+      courses: [
+        {
+          dallah_course_code: payload.dallah_course_code,
+          lang: payload.lang,
+          licence_type: payload.licence_type,
+        },
+      ],
+    },
+  });
 }
 
 export async function replaceEnrollmentApi(
   payload: ReplaceEnrollmentPayload
-): Promise<Enrollment> {
-  const { data } = await axiosInstance.post<Enrollment>(
-    "/enrollments/replace",
-    payload
-  );
-  return data;
+): Promise<void> {
+  await axiosInstance.post("/enrollments/replace", {
+    national_id: payload.national_id,
+    courses: [
+      {
+        old: payload.old,
+        new: payload.new,
+      },
+    ],
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

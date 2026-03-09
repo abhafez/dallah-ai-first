@@ -7,6 +7,30 @@ export interface DropdownOption<T extends string> {
   labelAr: string;
 }
 
+export interface ApiUserEnrollment {
+  id: number;
+  status: string;
+  course: {
+    id: number;
+    course_name: string;
+    dallah_course_code: string;
+    language: string; // "arabic", "english", etc.
+    category: "private" | "motor" | "public";
+  };
+}
+
+export interface ApiUser {
+  id: number;
+  name: string;
+  national_id: string;
+  mobile_number: string;
+  email: string;
+  lang: string;
+  status: string;
+  organization_branch_id: number;
+  enrollments: ApiUserEnrollment[];
+}
+
 export interface User {
   id: string;
   name: string;
@@ -17,6 +41,8 @@ export interface User {
   vehicle: string; // maps to licence_type
   branch?: string;
   createdAt?: string;
+  status?: string;
+  enrollments?: ApiUserEnrollment[];
 }
 
 export interface CreateUserPayload {
@@ -33,11 +59,10 @@ export interface CreateUserPayload {
 }
 
 export interface UpdateUserPayload {
+  current_national_id: string;
   name?: string;
   mobile?: string;
-  nationalId?: string;
-  language?: Language;
-  branch?: string;
+  lang?: string;
 }
 
 export interface BulkUploadResultUser {
@@ -76,18 +101,23 @@ export interface Enrollment {
 }
 
 export interface CreateEnrollmentPayload {
-  userId: string;
+  national_id: string;
+  dallah_course_code: string;
   lang: string;
   licence_type: "private" | "motor" | "public";
-  course_code: string;
+}
+
+export interface DeleteEnrollmentPayload {
+  national_id: string;
+  dallah_course_code: string;
+  lang: string;
+  licence_type: "private" | "motor" | "public";
 }
 
 export interface ReplaceEnrollmentPayload {
-  enrollmentId: string;
-  userId: string;
-  lang: string;
-  licence_type: "private" | "motor" | "public";
-  course_code: string;
+  national_id: string;
+  old: { dallah_course_code: string; lang: string; licence_type: "private" | "motor" | "public" };
+  new: { dallah_course_code: string; lang: string; licence_type: "private" | "motor" | "public" };
 }
 
 export interface AttendanceRecord {

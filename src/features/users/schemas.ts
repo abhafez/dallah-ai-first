@@ -32,9 +32,7 @@ export const updateUserSchema = z.object({
     (val) => isValidPhoneNumber(val, "SA"),
     "mobileInvalid",
   ),
-  nationalId: z.string().regex(nationalIdRegex, "nationalIdInvalid"),
-  language: z.enum(["ar", "en"]).optional(),
-  branch: z.string().optional(),
+  lang: z.string().min(1, "languageRequired"),
 });
 
 export type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
@@ -43,12 +41,11 @@ export type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
 // Create Enrollment Schema
 // ──────────────────────────────────────────────────────────────────────────────
 export const createEnrollmentSchema = z.object({
-  userId: z.string().min(1),
   lang: z.string().min(1, "languageRequired"),
   licence_type: z.enum(["private", "motor", "public"], {
     message: "licenceTypeRequired",
   }),
-  course_code: z.string().min(1, "courseRequired"),
+  dallah_course_code: z.string().min(1, "courseRequired"),
 });
 
 export type CreateEnrollmentFormValues = z.infer<typeof createEnrollmentSchema>;

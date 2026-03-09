@@ -5,13 +5,11 @@ import type {
   LoginResponse,
 } from "@/features/auth/types";
 import type {
-  User,
+  ApiUser,
+  ApiUserEnrollment,
   CreateUserPayload,
   UpdateUserPayload,
   BulkUploadResponse,
-  Enrollment,
-  CreateEnrollmentPayload,
-  ReplaceEnrollmentPayload,
   AttendanceRecord,
 } from "@/features/users/types";
 
@@ -26,7 +24,7 @@ const url = (path: string) => `${baseUrl}${path}`;
 // ──────────────────────────────────────────────────────────────────────────────
 let _mockIsAuthenticated = false;
 let _nextUserId = 4;
-let _nextEnrollmentId = 4;
+let _nextEnrollmentId = 10;
 
 const MOCK_USER: AuthUser = {
   id: 1,
@@ -35,72 +33,81 @@ const MOCK_USER: AuthUser = {
   role: "super_admin",
 };
 
-const MOCK_USERS: User[] = [
-  {
-    id: "u1",
-    name: "Ahmed Al-Rashid",
-    mobile: "+966512345678",
-    nationalId: "1234567890",
-    language: "ar",
-    level: "beginner",
-    vehicle: "sedan",
-    branch: "Riyadh",
-    createdAt: "2026-01-15T10:00:00Z",
-  },
-  {
-    id: "u2",
-    name: "Sara Mohammad",
-    mobile: "+966587654321",
-    nationalId: "2098765432",
-    language: "ar",
-    level: "intermediate",
-    vehicle: "suv",
-    branch: "Jeddah",
-    createdAt: "2026-02-10T08:30:00Z",
-  },
-  {
-    id: "u3",
-    name: "John Smith",
-    mobile: "+966555555555",
-    nationalId: "1122334455",
-    language: "en",
-    level: "advanced",
-    vehicle: "truck",
-    branch: "Dammam",
-    createdAt: "2026-03-01T14:00:00Z",
-  },
-];
+const MOCK_ENROLLMENTS_MAP: Record<string, ApiUserEnrollment[]> = {
+  "1234567890": [
+    {
+      id: 1,
+      status: "created",
+      course: {
+        id: 1,
+        course_name: "دليل تعليم القيادة النظري للمركبات - مستوى متقدم (عربي)",
+        dallah_course_code: "P30h",
+        language: "arabic",
+        category: "private",
+      },
+    },
+  ],
+  "2098765432": [
+    {
+      id: 2,
+      status: "created",
+      course: {
+        id: 2,
+        course_name: "Private 15 hours - Arabic",
+        dallah_course_code: "P15h",
+        language: "arabic",
+        category: "private",
+      },
+    },
+  ],
+  "1122334455": [
+    {
+      id: 3,
+      status: "created",
+      course: {
+        id: 6,
+        course_name: "Public with License - Arabic",
+        dallah_course_code: "PUB-L",
+        language: "english",
+        category: "public",
+      },
+    },
+  ],
+};
 
-const MOCK_ENROLLMENTS: Enrollment[] = [
+const MOCK_USERS: ApiUser[] = [
   {
-    id: "e1",
-    userId: "u1",
-    courseTitle: "Defensive Driving - Level 1",
-    courseId: "c1",
-    lang: "1",
-    licence_type: "private",
-    course_code: "P30h",
-    createdAt: "2026-02-01T09:00:00Z",
+    id: 1,
+    name: "Ahmed Al-Rashid",
+    mobile_number: "+966512345678",
+    national_id: "1234567890",
+    email: "ahmed@example.com",
+    lang: "ar",
+    status: "created",
+    organization_branch_id: 3,
+    enrollments: MOCK_ENROLLMENTS_MAP["1234567890"],
   },
   {
-    id: "e2",
-    userId: "u2",
-    courseTitle: "Advanced Driving Skills",
-    courseId: "c2",
-    lang: "1",
-    licence_type: "private",
-    course_code: "P15h",
-    createdAt: "2026-02-15T11:00:00Z",
+    id: 2,
+    name: "Sara Mohammad",
+    mobile_number: "+966587654321",
+    national_id: "2098765432",
+    email: "sara@example.com",
+    lang: "ar",
+    status: "created",
+    organization_branch_id: 1,
+    enrollments: MOCK_ENROLLMENTS_MAP["2098765432"],
   },
   {
-    id: "e3",
-    userId: "u3",
-    courseTitle: "Commercial Vehicle Training",
-    courseId: "c3",
-    lang: "2",
-    licence_type: "public",
-    course_code: "PUB-L",
-    createdAt: "2026-03-05T15:30:00Z",
+    id: 3,
+    name: "John Smith",
+    mobile_number: "+966555555555",
+    national_id: "1122334455",
+    email: "john@example.com",
+    lang: "en",
+    status: "created",
+    organization_branch_id: 3,
+    enrollments: MOCK_ENROLLMENTS_MAP["1122334455"],
   },
 ];
 
@@ -183,101 +190,101 @@ export const handlers = [
   // USERS
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // LIST / SEARCH USERS
+  http.get(url("/users"), async ({ request }) => {
+    await delay(400);
+    const searchUrl = new URL(request.url);
+    const q = searchUrl.searchParams.get("q")?.toLowerCase() || "";
+    const results = q
+      ? MOCK_USERS.filter(
+          (u) =>
+            u.name.toLowerCase().includes(q) ||
+            u.mobile_number.includes(q) ||
+            u.national_id.includes(q),
+        )
+      : MOCK_USERS.slice(0, 50);
+    return HttpResponse.json({ users: results });
+  }),
+
   // CREATE USER
-  http.post<never, CreateUserPayload, User | { message: string }>(
+  http.post<never, CreateUserPayload, ApiUser | { message: string }>(
     url("/users"),
     async ({ request }) => {
       await delay(600);
       const body = await request.json();
 
-      // Check for duplicate national ID or mobile
       const duplicate = MOCK_USERS.find(
-        (u) => u.nationalId === body.national_id || u.mobile === body.mobile
+        (u) => u.national_id === body.national_id || u.mobile_number === body.mobile,
       );
       if (duplicate) {
         return HttpResponse.json(
           { message: "User with this national ID or mobile already exists." },
-          { status: 409 }
+          { status: 409 },
         );
       }
 
-      const newUser: User = {
-        id: `u${_nextUserId++}`,
+      const newUser: ApiUser = {
+        id: _nextUserId++,
         name: body.name,
-        mobile: body.mobile,
-        nationalId: body.national_id,
-        language: body.lang === "1" ? "ar" : "en",
-        level: (body.courses[0]?.dallah_course_code?.includes("P6") ? "beginner" : "intermediate"),
-        vehicle: (body.courses[0]?.licence_type === "motor" ? "motorcycle" : "sedan"),
-        branch: `School ${body.school_id}`,
-        createdAt: new Date().toISOString(),
+        mobile_number: body.mobile,
+        national_id: body.national_id,
+        email: "",
+        lang: body.lang === "1" ? "ar" : "en",
+        status: "created",
+        organization_branch_id: body.school_id,
+        enrollments: body.courses.map((c, i) => ({
+          id: _nextEnrollmentId + i,
+          status: "created",
+          course: {
+            id: i + 1,
+            course_name: `Course ${c.dallah_course_code}`,
+            dallah_course_code: c.dallah_course_code,
+            language: "arabic",
+            category: c.licence_type,
+          },
+        })),
       };
+      _nextEnrollmentId += body.courses.length;
       MOCK_USERS.push(newUser);
 
-      // Auto-create an enrollment
-      const enrollment: Enrollment = {
-        id: `e${_nextEnrollmentId++}`,
-        userId: newUser.id,
-        courseTitle: `Course ${body.courses[0]?.dallah_course_code}`,
-        courseId: `c-auto-${newUser.id}`,
-        lang: newUser.language === "ar" ? "1" : "2",
-        licence_type: (body.courses[0]?.licence_type || "private"),
-        course_code: body.courses[0]?.dallah_course_code || "P6h",
-        createdAt: new Date().toISOString(),
-      };
-      MOCK_ENROLLMENTS.push(enrollment);
-
       return HttpResponse.json(newUser, { status: 201 });
-    }
+    },
   ),
 
-  // SEARCH USERS
-  http.get(url("/users/search"), async ({ request }) => {
-    await delay(400);
-    const searchUrl = new URL(request.url);
-    const q = searchUrl.searchParams.get("q")?.toLowerCase() || "";
-    const results = MOCK_USERS.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.mobile.includes(q) ||
-        u.nationalId.includes(q)
-    );
-    return HttpResponse.json(results);
-  }),
-
   // UPDATE USER
-  http.put<{ id: string }, UpdateUserPayload, User | { message: string }>(
-    url("/users/:id"),
-    async ({ params, request }) => {
+  http.patch<never, UpdateUserPayload, ApiUser | { message: string }>(
+    url("/users"),
+    async ({ request }) => {
       await delay(500);
       const body = await request.json();
-      const userIndex = MOCK_USERS.findIndex((u) => u.id === params.id);
+      const userIndex = MOCK_USERS.findIndex(
+        (u) => u.national_id === body.current_national_id,
+      );
       if (userIndex === -1) {
-        return HttpResponse.json(
-          { message: "User not found." },
-          { status: 404 }
-        );
+        return HttpResponse.json({ message: "User not found." }, { status: 404 });
       }
 
-      // Check uniqueness for mobile/nationalId
-      if (body.mobile || body.nationalId) {
+      if (body.mobile) {
         const duplicate = MOCK_USERS.find(
-          (u) =>
-            u.id !== params.id &&
-            ((body.nationalId && u.nationalId === body.nationalId) ||
-              (body.mobile && u.mobile === body.mobile))
+          (u) => u.national_id !== body.current_national_id && u.mobile_number === body.mobile,
         );
         if (duplicate) {
           return HttpResponse.json(
-            { message: "Another user already has this national ID or mobile." },
-            { status: 409 }
+            { message: "Another user already has this mobile number." },
+            { status: 409 },
           );
         }
       }
 
-      MOCK_USERS[userIndex] = { ...MOCK_USERS[userIndex], ...body };
-      return HttpResponse.json(MOCK_USERS[userIndex]);
-    }
+      const updated = {
+        ...MOCK_USERS[userIndex],
+        ...(body.name ? { name: body.name } : {}),
+        ...(body.mobile ? { mobile_number: body.mobile } : {}),
+        ...(body.lang ? { lang: body.lang } : {}),
+      };
+      MOCK_USERS[userIndex] = updated;
+      return HttpResponse.json(updated);
+    },
   ),
 
   // BULK UPLOAD
@@ -285,26 +292,23 @@ export const handlers = [
     await delay(1500);
     // Simulate processing a CSV with some successes and failures
     const response: BulkUploadResponse = {
-      totalProcessed: 5,
-      successCount: 3,
-      failureCount: 2,
+      message: "Bulk upload processed",
+      summary: { total: 5, successful: 3, failed: 2 },
       results: [
-        { row: 1, name: "Ali Hassan", nationalId: "1111111111", status: "success" },
-        { row: 2, name: "Fatima Omar", nationalId: "2222222222", status: "success" },
-        { row: 3, name: "Khalid Saeed", nationalId: "3333333333", status: "success" },
+        { national_id: "1111111111", name: "Ali Hassan", aanaab_user_id: 101 },
+        { national_id: "2222222222", name: "Fatima Omar", aanaab_user_id: 102 },
+        { national_id: "3333333333", name: "Khalid Saeed", aanaab_user_id: 103 },
+      ],
+      failed_users: [
         {
-          row: 4,
+          national_id: "1234567890",
           name: "Nora Ali",
-          nationalId: "1234567890",
-          status: "error",
-          message: "Duplicate national ID",
+          errors: ["Duplicate national ID"],
         },
         {
-          row: 5,
+          national_id: "invalid",
           name: "Bad Data",
-          nationalId: "invalid",
-          status: "error",
-          message: "Invalid national ID format",
+          errors: ["Invalid national ID format"],
         },
       ],
     };
@@ -315,94 +319,90 @@ export const handlers = [
   // ENROLLMENTS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // GET USER ENROLLMENTS
-  http.get(url("/users/:id/enrollments"), async ({ params }) => {
-    await delay(400);
-    const enrollments = MOCK_ENROLLMENTS.filter(
-      (e) => e.userId === (params.id as string)
-    );
-    return HttpResponse.json(enrollments);
-  }),
-
   // CREATE ENROLLMENT
-  http.post<never, CreateEnrollmentPayload, Enrollment | { message: string }>(
+  http.post(
     url("/enrollments"),
     async ({ request }) => {
       await delay(600);
-      const body = await request.json();
+      const body = await request.json() as { national_id: string; courses: Array<{ dallah_course_code: string; lang: string; licence_type: "private" | "motor" | "public" }> };
 
-      const user = MOCK_USERS.find((u) => u.id === body.userId);
-      if (!user) {
-        return HttpResponse.json(
-          { message: "User not found." },
-          { status: 404 }
-        );
+      const userIndex = MOCK_USERS.findIndex((u) => u.national_id === body.national_id);
+      if (userIndex === -1) {
+        return HttpResponse.json({ message: "User not found." }, { status: 404 });
       }
 
-      const enrollment: Enrollment = {
-        id: `e${_nextEnrollmentId++}`,
-        userId: body.userId,
-        courseTitle: `New Course ${body.course_code}`,
-        courseId: `c-new-${body.userId}`,
-        lang: body.lang,
-        licence_type: body.licence_type,
-        course_code: body.course_code,
-        createdAt: new Date().toISOString(),
-      };
-      MOCK_ENROLLMENTS.push(enrollment);
-      return HttpResponse.json(enrollment, { status: 201 });
-    }
+      const newEnrollments: ApiUserEnrollment[] = body.courses.map((c) => ({
+        id: _nextEnrollmentId++,
+        status: "created",
+        course: {
+          id: _nextEnrollmentId,
+          course_name: `Course ${c.dallah_course_code}`,
+          dallah_course_code: c.dallah_course_code,
+          language: "arabic",
+          category: c.licence_type,
+        },
+      }));
+      MOCK_USERS[userIndex].enrollments = [
+        ...MOCK_USERS[userIndex].enrollments,
+        ...newEnrollments,
+      ];
+      return HttpResponse.json({ message: "Enrollment created" }, { status: 201 });
+    },
   ),
 
   // DELETE ENROLLMENT
-  http.delete(url("/enrollments/:id"), async ({ params }) => {
-    await delay(500);
-    const index = MOCK_ENROLLMENTS.findIndex(
-      (e) => e.id === (params.id as string)
-    );
-    if (index === -1) {
-      return HttpResponse.json(
-        { message: "Enrollment not found." },
-        { status: 404 }
+  http.delete(
+    url("/enrollments"),
+    async ({ request }) => {
+      await delay(500);
+      const body = await request.json() as { national_id: string; courses: Array<{ dallah_course_code: string }> };
+
+      const userIndex = MOCK_USERS.findIndex((u) => u.national_id === body.national_id);
+      if (userIndex === -1) {
+        return HttpResponse.json({ message: "User not found." }, { status: 404 });
+      }
+
+      const codesToRemove = new Set(body.courses.map((c) => c.dallah_course_code));
+      MOCK_USERS[userIndex].enrollments = MOCK_USERS[userIndex].enrollments.filter(
+        (e) => !codesToRemove.has(e.course.dallah_course_code),
       );
-    }
-    MOCK_ENROLLMENTS.splice(index, 1);
-    return new HttpResponse(null, { status: 204 });
-  }),
+      return HttpResponse.json({ message: "Enrollment deleted" });
+    },
+  ),
 
   // REPLACE ENROLLMENT
-  http.post<never, ReplaceEnrollmentPayload, Enrollment | { message: string }>(
+  http.post(
     url("/enrollments/replace"),
     async ({ request }) => {
       await delay(800);
-      const body = await request.json();
+      const body = await request.json() as { national_id: string; courses: Array<{ old: { dallah_course_code: string }; new: { dallah_course_code: string; lang: string; licence_type: "private" | "motor" | "public" } }> };
 
-      // Delete old enrollment
-      const oldIndex = MOCK_ENROLLMENTS.findIndex(
-        (e) => e.id === body.enrollmentId
-      );
-      if (oldIndex === -1) {
-        return HttpResponse.json(
-          { message: "No current enrollment to replace." },
-          { status: 404 }
-        );
+      const userIndex = MOCK_USERS.findIndex((u) => u.national_id === body.national_id);
+      if (userIndex === -1) {
+        return HttpResponse.json({ message: "User not found." }, { status: 404 });
       }
-      MOCK_ENROLLMENTS.splice(oldIndex, 1);
 
-      // Create new enrollment
-      const enrollment: Enrollment = {
-        id: `e${_nextEnrollmentId++}`,
-        userId: body.userId,
-        courseTitle: `Replaced Course ${body.course_code}`,
-        courseId: `c-replaced-${Date.now()}`,
-        lang: body.lang,
-        licence_type: body.licence_type,
-        course_code: body.course_code,
-        createdAt: new Date().toISOString(),
-      };
-      MOCK_ENROLLMENTS.push(enrollment);
-      return HttpResponse.json(enrollment);
-    }
+      for (const replacement of body.courses) {
+        const enrollments = MOCK_USERS[userIndex].enrollments;
+        const idx = enrollments.findIndex(
+          (e) => e.course.dallah_course_code === replacement.old.dallah_course_code,
+        );
+        if (idx !== -1) {
+          enrollments[idx] = {
+            id: _nextEnrollmentId++,
+            status: "created",
+            course: {
+              id: _nextEnrollmentId,
+              course_name: `Course ${replacement.new.dallah_course_code}`,
+              dallah_course_code: replacement.new.dallah_course_code,
+              language: "arabic",
+              category: replacement.new.licence_type,
+            },
+          };
+        }
+      }
+      return HttpResponse.json({ message: "Enrollment replaced" });
+    },
   ),
 
   // ═══════════════════════════════════════════════════════════════════════════

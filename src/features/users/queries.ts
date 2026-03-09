@@ -3,10 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createUserApi,
+  listUsersApi,
   searchUsersApi,
   updateUserApi,
   bulkUploadUsersApi,
-  getUserEnrollmentsApi,
   createEnrollmentApi,
   deleteEnrollmentApi,
   replaceEnrollmentApi,
@@ -19,6 +19,7 @@ import type {
   CreateUserPayload,
   UpdateUserPayload,
   CreateEnrollmentPayload,
+  DeleteEnrollmentPayload,
   ReplaceEnrollmentPayload,
 } from "./types";
 
@@ -63,11 +64,17 @@ export function useSearchUsers(query: string) {
   });
 }
 
+export function useListUsers() {
+  return useQuery({
+    queryKey: userKeys.all,
+    queryFn: listUsersApi,
+  });
+}
+
 export function useUpdateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, payload }: { userId: string; payload: UpdateUserPayload }) =>
-      updateUserApi(userId, payload),
+    mutationFn: (payload: UpdateUserPayload) => updateUserApi(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all });
     },
@@ -88,22 +95,12 @@ export function useBulkUploadUsers() {
 // Enrollment hooks
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function useUserEnrollments(userId: string) {
-  return useQuery({
-    queryKey: userKeys.enrollments(userId),
-    queryFn: () => getUserEnrollmentsApi(userId),
-    enabled: Boolean(userId),
-  });
-}
-
 export function useCreateEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateEnrollmentPayload) => createEnrollmentApi(payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: userKeys.enrollments(variables.userId),
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
     },
   });
 }
@@ -111,7 +108,7 @@ export function useCreateEnrollment() {
 export function useDeleteEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (enrollmentId: string) => deleteEnrollmentApi(enrollmentId),
+    mutationFn: (payload: DeleteEnrollmentPayload) => deleteEnrollmentApi(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all });
     },
@@ -122,10 +119,8 @@ export function useReplaceEnrollment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: ReplaceEnrollmentPayload) => replaceEnrollmentApi(payload),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: userKeys.enrollments(variables.userId),
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all });
     },
   });
 }
