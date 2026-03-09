@@ -366,27 +366,20 @@ export default function EnrollmentsPage() {
       )}
 
       {/* Search + Refresh */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-2">
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              dir="ltr"
-            />
-            <Button onClick={handleSearch} disabled={isLoading}>
-              <Search className="h-4 w-4 mr-2" />
-              {isLoading && isSearchActive ? t("searching") : t("searchButton")}
-            </Button>
-            <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              {t("refresh")}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex gap-2 w-1/2 justify-between">
+        <Input
+          placeholder={t("searchPlaceholder")}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          dir="ltr"
+          className="h-9"
+        />
+        <Button size="md" className="w-24" onClick={handleSearch} disabled={isLoading}>
+          <Search className="w-3.5 mr-1.5" />
+          {isLoading && isSearchActive ? t("searching") : t("searchButton")}
+        </Button>
+      </div>
 
       {/* Users Table */}
       <Card>
