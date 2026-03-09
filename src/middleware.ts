@@ -36,6 +36,11 @@ export function middleware(request: NextRequest) {
   // Determine current locale (fallback to default)
   const locale = pathnameIsMissingLocale ? routing.defaultLocale : pathname.split("/")[1];
 
+  // Redirect authenticated users from home to dashboard
+  if (pathWithoutLocale === "/" && token) {
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+  }
+
   // Redirect unauthenticated users trying to access protected routes
   if (isProtected && !token) {
     const loginUrl = new URL(`/${locale}/login`, request.url);
