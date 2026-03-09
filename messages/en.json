@@ -38,7 +38,7 @@
     "nameLabel": "Full Name",
     "namePlaceholder": "Enter full name",
     "mobileLabel": "Mobile Number",
-    "mobilePlaceholder": "+9665XXXXXXXX",
+    "mobilePlaceholder": "5XXXXXXXX",
     "nationalIdLabel": "National ID",
     "nationalIdPlaceholder": "Enter 10-digit national ID",
     "schoolLabel": "School",

@@ -244,7 +244,7 @@ export default function EnrollmentsPage() {
       { current_national_id: editTarget.nationalId, ...values },
       {
         onSuccess: () => {
-          setSuccessMsg(t("editSuccess"));
+          toast.success(t("editSuccess"));
           setEditTarget(null);
         },
       },

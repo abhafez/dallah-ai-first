@@ -204,6 +204,7 @@ export function AddUserForm() {
                 <Input
                   placeholder={t("nationalIdPlaceholder")}
                   dir="ltr"
+                  type="number"
                   {...field}
                 />
               </FormControl>
