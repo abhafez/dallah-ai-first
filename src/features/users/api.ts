@@ -74,7 +74,8 @@ export async function bulkUploadUsersApi(
   const { data } = await axiosInstance.post<BulkUploadResponse>(
     "/users/bulk_csv",
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    // Let axios set the correct Content-Type with boundary
+    {}
   );
   return data;
 }

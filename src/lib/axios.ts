@@ -3,37 +3,41 @@ import axios from "axios";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL + "/api/v1/dallah" : "http://localhost:31000/api/v1/dallah";
 
 export const axiosInstance = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+    baseURL: BASE_URL,
+    headers: {
+        "Content-Type": "application/json",
+    },
 });
 
 // Request interceptor – attach auth token from localStorage
 axiosInstance.interceptors.request.use(
-  (config) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("auth_token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
+    (config) => {
+        if (typeof window !== "undefined") {
+            const token = localStorage.getItem("auth_token");
+            if (token) {
+                if (typeof config.headers.set === "function") {
+                    config.headers.set("Authorization", `Bearer ${token}`);
+                } else {
+                    (config.headers as any).Authorization = `Bearer ${token}`;
+                }
+            }
+        }
+        return config;
+    },
+    /* v8 ignore next */
+    (error) => Promise.reject(error)
 );
 
 // Response interceptor – handle 401 globally
 axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("auth_token");
-      document.cookie = "auth_token=; path=/; max-age=0";
-      if (process.env.NODE_ENV !== "test") {
-        window.location.href = "/login";
-      }
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && typeof window !== "undefined") {
+            localStorage.removeItem("auth_token");
+            document.cookie = "auth_token=; path=/; max-age=0";
+            /* istanbul ignore next */
+            if (process.env.NODE_ENV !== "test") window.location.href = "/login";
+        }
+        return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
 );

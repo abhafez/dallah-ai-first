@@ -9,6 +9,17 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    coverage: {
+      include: [
+        "src/features/**/*.{ts,tsx}",
+        "src/lib/**/*.{ts,tsx}",
+      ],
+      exclude: [
+        "**/src/mocks/**",
+        "**/types.ts",
+        "**/*.d.ts",
+      ],
+    },
     css: true,
   },
   resolve: {

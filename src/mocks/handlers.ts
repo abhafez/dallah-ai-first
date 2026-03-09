@@ -288,7 +288,7 @@ export const handlers = [
   ),
 
   // BULK UPLOAD
-  http.post(url("/users/bulk"), async () => {
+  http.post(url("/users/bulk_csv"), async () => {
     await delay(1500);
     // Simulate processing a CSV with some successes and failures
     const response: BulkUploadResponse = {

@@ -23,6 +23,7 @@ const localStorageMock = (() => {
     };
 })();
 Object.defineProperty(globalThis, "localStorage", {value: localStorageMock});
+Object.defineProperty(window, "localStorage", {value: localStorageMock});
 
 beforeAll(() => server.listen());
 afterEach(() => {
