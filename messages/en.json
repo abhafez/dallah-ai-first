@@ -152,18 +152,20 @@
     "errorGeneral": "Failed to update. Please try again."
   },
   "Attendance": {
-    "title": "Attendance / Progress",
-    "description": "View which trainees have started their courses.",
+    "title": "Notifications",
+    "description": "Unprocessed enrollment outcome notifications (oldest first, up to 100).",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
-    "userName": "User Name",
-    "course": "Course",
-    "status": "Status",
-    "startDate": "Start Date",
-    "started": "Started",
-    "notStarted": "Not Started",
-    "noRecords": "No attendance records found.",
-    "errorGeneral": "Failed to load attendance data. Please try again."
+    "colId": "#",
+    "colEventType": "Event",
+    "colUserId": "User ID",
+    "colEnrollmentId": "Enrollment",
+    "colWorkflowState": "State",
+    "colProgress": "Progress",
+    "colStartedAt": "Started At",
+    "hasMore": "More notifications available — showing first 100.",
+    "noRecords": "No pending notifications.",
+    "errorGeneral": "Failed to load notifications. Please try again."
   },
   "LanguageSwitcher": {
     "toggle": "Switch Language"

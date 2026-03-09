@@ -130,6 +130,25 @@ export interface AttendanceRecord {
   payloadChangedAt: string;
 }
 
+export interface ApiNotificationEnrollment {
+  aanaab_user_id: number;
+  enrollment_id: number;
+  workflow_state: string;
+  total_progress: number;
+}
+
+export interface ApiNotification {
+  id: number;
+  event_type: string;
+  created_at: string;
+  enrollment: ApiNotificationEnrollment;
+}
+
+export interface NotificationsResponse {
+  notifications: ApiNotification[];
+  meta: { count: number; has_more: boolean };
+}
+
 export interface SearchUsersParams {
   q: string;
 }

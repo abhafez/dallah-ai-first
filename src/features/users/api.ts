@@ -6,6 +6,7 @@ import type {
   UpdateUserPayload,
   BulkUploadResponse,
   AttendanceRecord,
+  NotificationsResponse,
   CreateEnrollmentPayload,
   DeleteEnrollmentPayload,
   ReplaceEnrollmentPayload,
@@ -147,6 +148,11 @@ export async function replaceEnrollmentApi(
 
 export async function getAttendanceApi(): Promise<AttendanceRecord[]> {
   const { data } = await axiosInstance.get<AttendanceRecord[]>("/attendance");
+  return data;
+}
+
+export async function getNotificationsApi(): Promise<NotificationsResponse> {
+  const { data } = await axiosInstance.get<NotificationsResponse>("/notifications");
   return data;
 }
 

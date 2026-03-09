@@ -414,6 +414,48 @@ export const handlers = [
     return HttpResponse.json(MOCK_ATTENDANCE);
   }),
 
+  http.get(url("/notifications"), async () => {
+    await delay(400);
+    return HttpResponse.json({
+      notifications: [
+        {
+          id: 1,
+          event_type: "enrollment_outcome",
+          created_at: "2026-03-01T09:00:00Z",
+          enrollment: {
+            aanaab_user_id: 1,
+            enrollment_id: 1,
+            workflow_state: "active",
+            total_progress: 0.25,
+          },
+        },
+        {
+          id: 2,
+          event_type: "enrollment_outcome",
+          created_at: "2026-03-05T11:30:00Z",
+          enrollment: {
+            aanaab_user_id: 2,
+            enrollment_id: 2,
+            workflow_state: "completed",
+            total_progress: 1.0,
+          },
+        },
+        {
+          id: 3,
+          event_type: "enrollment_outcome",
+          created_at: "2026-03-08T14:00:00Z",
+          enrollment: {
+            aanaab_user_id: 3,
+            enrollment_id: 3,
+            workflow_state: "active",
+            total_progress: 0.6,
+          },
+        },
+      ],
+      meta: { count: 3, has_more: false },
+    });
+  }),
+
   // ═══════════════════════════════════════════════════════════════════════════
   // LOOKUPS
   // ═══════════════════════════════════════════════════════════════════════════

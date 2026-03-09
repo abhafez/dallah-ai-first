@@ -11,6 +11,7 @@ import {
   deleteEnrollmentApi,
   replaceEnrollmentApi,
   getAttendanceApi,
+  getNotificationsApi,
   getLanguagesApi,
   getCoursesApi,
   getBranchesApi,
@@ -133,6 +134,13 @@ export function useAttendance() {
   return useQuery({
     queryKey: attendanceKeys.all,
     queryFn: getAttendanceApi,
+  });
+}
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: ["notifications"],
+    queryFn: getNotificationsApi,
   });
 }
 

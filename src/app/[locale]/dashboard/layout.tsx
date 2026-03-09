@@ -127,12 +127,11 @@ export default function DashboardLayout({
         <div className="flex h-full flex-col justify-between">
           {sidebarContent}
           <div className="border-t p-4">
-            {user && (
-              <p className="mb-2 truncate text-sm font-medium">{user.name}</p>
-            )}
-            <div className="flex items-center gap-2">
-              <LanguageSwitcher />
-              <ModeToggle />
+
+            <div className="flex items-center gap-2 justify-between">
+              {user && (
+                  <p className="truncate text-sm font-medium">{user.name}</p>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

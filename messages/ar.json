@@ -152,18 +152,20 @@
     "errorGeneral": "فشل التحديث. حاول مرة أخرى."
   },
   "Attendance": {
-    "title": "الحضور / التقدم",
-    "description": "عرض المتدربين الذين بدأوا دوراتهم.",
+    "title": "الإشعارات",
+    "description": "إشعارات نتائج التسجيل غير المعالجة (الأقدم أولاً، حتى 100).",
     "refresh": "تحديث",
     "refreshing": "جارٍ التحديث…",
-    "userName": "اسم المستخدم",
-    "course": "الدورة",
-    "status": "الحالة",
-    "startDate": "تاريخ البدء",
-    "started": "بدأ",
-    "notStarted": "لم يبدأ",
-    "noRecords": "لا توجد سجلات حضور.",
-    "errorGeneral": "فشل تحميل بيانات الحضور. حاول مرة أخرى."
+    "colId": "#",
+    "colEventType": "الحدث",
+    "colUserId": "رقم المستخدم",
+    "colEnrollmentId": "التسجيل",
+    "colWorkflowState": "الحالة",
+    "colProgress": "التقدم",
+    "colStartedAt": "تاريخ البدء",
+    "hasMore": "توجد إشعارات إضافية — يتم عرض أول 100.",
+    "noRecords": "لا توجد إشعارات معلقة.",
+    "errorGeneral": "فشل تحميل الإشعارات. حاول مرة أخرى."
   },
   "LanguageSwitcher": {
     "toggle": "تغيير اللغة"
