@@ -11,6 +11,7 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
       include: [
+        "src/app/**/*.{ts,tsx}",
         "src/features/**/*.{ts,tsx}",
         "src/lib/**/*.{ts,tsx}",
       ],

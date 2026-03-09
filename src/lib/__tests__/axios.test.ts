@@ -26,32 +26,19 @@ describe("axiosInstance", () => {
         it("falls back to direct property access when headers.set is unavailable", async () => {
             localStorage.setItem("auth_token", "fallback-token");
 
-            let capturedAuth: string | null = null;
-            server.use(
-                http.get("http://localhost:31000/api/v1/dallah/test-fallback", ({ request }) => {
-                    capturedAuth = request.headers.get("Authorization");
-                    return HttpResponse.json({ ok: true });
-                })
-            );
+            // Extract the interceptor function
+            const interceptors = (axiosInstance.interceptors.request as any).handlers;
+            const authInterceptor = interceptors.find((h: any) => h !== null)?.fulfilled;
+            expect(authInterceptor).toBeDefined();
 
-            // This interceptor runs FIRST (LIFO) — overrides headers.set via defineProperty
-            // so typeof headers.set !== "function", forcing the else branch in axios.ts
-            const id = axiosInstance.interceptors.request.use((config) => {
-                Object.defineProperty(config.headers, "set", {
-                    value: undefined,
-                    writable: true,
-                    configurable: true,
-                });
-                return config;
-            });
+            // Create a fake config missing the 'set' method
+            const fakeConfig = { headers: {} };
+            
+            // Execute the interceptor directly
+            const result = await authInterceptor(fakeConfig);
 
-            try {
-                await axiosInstance.get("/test-fallback");
-            } finally {
-                axiosInstance.interceptors.request.eject(id);
-            }
-
-            expect(capturedAuth).toBe("Bearer fallback-token");
+            // Assert the fallback property access worked
+            expect((result.headers as any).Authorization).toBe("Bearer fallback-token");
         });
 
         it("does not attach Authorization header when no token", async () => {
