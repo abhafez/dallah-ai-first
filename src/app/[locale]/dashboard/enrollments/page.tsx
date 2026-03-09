@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -48,6 +54,7 @@ import {
   useCreateEnrollment,
   useDeleteEnrollment,
   useReplaceEnrollment,
+  useBulkUploadUsers,
 } from "@/features/users/queries";
 import {
   updateUserSchema,
@@ -60,8 +67,9 @@ import {
   COURSE_OPTIONS,
   LICENCE_TYPE_OPTIONS,
 } from "@/features/users/constants";
-import { langNameToCode } from "@/features/users/api";
-import type { User, ApiUserEnrollment } from "@/features/users/types";
+import { langNameToCode, downloadBulkCsvTemplateApi } from "@/features/users/api";
+import type { User, ApiUserEnrollment, BulkUploadResponse } from "@/features/users/types";
+import { AddUserForm } from "@/components/users/add-user-form";
 import {
   Search,
   Plus,
@@ -71,7 +79,13 @@ import {
   Pencil,
   ListChecks,
   RotateCcw,
+  UserPlus,
+  Upload,
+  Download,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const LOCALE_TO_LANG_CODE: Record<string, string> = {
   ar: "1",
@@ -98,6 +112,77 @@ export default function EnrollmentsPage() {
   const [replaceTarget, setReplaceTarget] = useState<ApiUserEnrollment | null>(null);
   const [showAddEnrollment, setShowAddEnrollment] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkUploadResponse | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bulkUpload = useBulkUploadUsers();
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setFileError(null);
+    setBulkResult(null);
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith(".csv")) {
+        setFileError("Please select a valid .csv file.");
+        setSelectedFile(null);
+        return;
+      }
+      setSelectedFile(file);
+    }
+  }
+
+  function handleBulkUpload() {
+    if (!selectedFile) {
+      setFileError("Please select a CSV file first.");
+      return;
+    }
+    bulkUpload.mutate(selectedFile, {
+      onSuccess: (data) => {
+        setBulkResult(data);
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        if (data.summary.failed === 0) {
+          toast.success(`${data.summary.successful} users uploaded successfully!`);
+        } else {
+          toast.warning(`${data.summary.successful} uploaded, ${data.summary.failed} failed.`);
+        }
+        refetch();
+      },
+      onError: () => toast.error("Upload failed. Please try again."),
+    });
+  }
+
+  async function handleDownloadTemplate() {
+    setIsDownloadingTemplate(true);
+    try {
+      await downloadBulkCsvTemplateApi();
+    } catch {
+      toast.error("Failed to download template.");
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  }
+
+  function downloadErrorReport() {
+    if (!bulkResult?.failed_users.length) return;
+    const csv =
+      "national_id,name,errors\n" +
+      bulkResult.failed_users
+        .map((u) => `${u.national_id},${u.name || ""},${u.errors.join("; ")}`)
+        .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "error_report.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const { data: allUsers, isLoading: allLoading, refetch } = useListUsers();
   const { data: searchResults, isLoading: searchLoading } = useSearchUsers(activeSearch);
@@ -365,20 +450,35 @@ export default function EnrollmentsPage() {
         </Alert>
       )}
 
-      {/* Search + Refresh */}
-      <div className="flex gap-2 w-1/2 justify-between">
-        <Input
-          placeholder={t("searchPlaceholder")}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          dir="ltr"
-          className="h-9"
-        />
-        <Button size="md" className="w-24" onClick={handleSearch} disabled={isLoading}>
-          <Search className="w-3.5 mr-1.5" />
-          {isLoading && isSearchActive ? t("searching") : t("searchButton")}
-        </Button>
+      {/* Search + Actions */}
+      <div className="flex gap-2 items-center">
+        <div className="flex gap-2 flex-1 max-w-lg">
+          <Input
+            placeholder={t("searchPlaceholder")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            dir="ltr"
+            className="h-9"
+          />
+          <Button size="sm" onClick={handleSearch} disabled={isLoading}>
+            <Search className="h-3.5 w-3.5 mr-1.5" />
+            {isLoading && isSearchActive ? t("searching") : t("searchButton")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleRefresh} disabled={isLoading}>
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <div className="flex gap-2 ms-auto">
+          <Button size="sm" variant="outline" onClick={() => setShowBulkImport(true)}>
+            <Upload className="h-3.5 w-3.5 mr-1.5" />
+            Bulk Import
+          </Button>
+          <Button size="sm" onClick={() => setShowAddUser(true)}>
+            <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+            Add User
+          </Button>
+        </div>
       </div>
 
       {/* Users Table */}
@@ -618,6 +718,126 @@ export default function EnrollmentsPage() {
                 {t("createEnrollment")}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add User Dialog */}
+      <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add User</DialogTitle>
+          </DialogHeader>
+          <AddUserForm />
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Dialog */}
+      <Dialog
+        open={showBulkImport}
+        onOpenChange={(open) => {
+          setShowBulkImport(open);
+          if (!open) { setSelectedFile(null); setBulkResult(null); setFileError(null); }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Users</DialogTitle>
+            <DialogDescription>Upload a CSV file to create multiple users at once.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDownloadTemplate}
+                disabled={isDownloadingTemplate}
+                type="button"
+              >
+                {isDownloadingTemplate ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Download Template
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="flex-1 text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
+              />
+              <Button
+                size="sm"
+                onClick={handleBulkUpload}
+                disabled={!selectedFile || bulkUpload.isPending}
+              >
+                {bulkUpload.isPending ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Uploading…</>
+                ) : (
+                  <><Upload className="h-3.5 w-3.5 mr-1.5" />Upload</>
+                )}
+              </Button>
+            </div>
+
+            {fileError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{fileError}</AlertDescription>
+              </Alert>
+            )}
+            {bulkUpload.isError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>Upload failed. Please try again.</AlertDescription>
+              </Alert>
+            )}
+
+            {bulkResult && (
+              <div className="space-y-3">
+                <div className="flex gap-4 text-sm">
+                  <span>Total: <strong>{bulkResult.summary.total}</strong></span>
+                  <span className="text-green-600">Success: <strong>{bulkResult.summary.successful}</strong></span>
+                  <span className="text-red-600">Failed: <strong>{bulkResult.summary.failed}</strong></span>
+                </div>
+
+                {bulkResult.failed_users.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-red-700 mb-1.5 flex items-center gap-1.5">
+                      <AlertCircle className="h-3.5 w-3.5" />Failed Users
+                    </h4>
+                    <div className="rounded-md border max-h-48 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>National ID</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Errors</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {bulkResult.failed_users.map((u) => (
+                            <TableRow key={u.national_id}>
+                              <TableCell className="font-mono text-xs">{u.national_id}</TableCell>
+                              <TableCell className="text-xs">{u.name}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{u.errors.join(", ")}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <Button size="sm" variant="outline" className="mt-2" onClick={downloadErrorReport}>
+                      <Download className="h-3.5 w-3.5 mr-1.5" />Download Error Report
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
