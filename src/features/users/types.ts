@@ -142,6 +142,7 @@ export interface ApiNotificationEnrollment {
 export interface ApiNotification {
   id: number;
   event_type: string;
+  user_name: string;
   created_at: string;
   enrollment: ApiNotificationEnrollment;
 }
