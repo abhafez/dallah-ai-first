@@ -50,7 +50,9 @@ export default async function RootLayout({
   // Determine direction based on locale
   const dir = locale === "ar" ? "rtl" : "ltr";
 
-  const enableMsw = process.env.NEXT_PUBLIC_ENABLE_MSW === "true";
+  const enableMsw =
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PUBLIC_ENABLE_MSW === "true";
 
   const appContent = (
     <NextIntlClientProvider messages={messages}>

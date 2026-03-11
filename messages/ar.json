@@ -159,6 +159,7 @@
     "colId": "#",
     "colEventType": "الحدث",
     "colUserId": "رقم المستخدم",
+    "colUserName": "الاسم",
     "colEnrollmentId": "التسجيل",
     "colWorkflowState": "الحالة",
     "colProgress": "التقدم",

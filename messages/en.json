@@ -159,6 +159,7 @@
     "colId": "#",
     "colEventType": "Event",
     "colUserId": "User ID",
+    "colUserName": "User Name",
     "colEnrollmentId": "Enrollment",
     "colWorkflowState": "State",
     "colProgress": "Progress",

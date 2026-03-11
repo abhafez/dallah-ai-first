@@ -132,6 +132,8 @@ export interface AttendanceRecord {
 
 export interface ApiNotificationEnrollment {
   aanaab_user_id: number;
+  user_name: string;
+  status: "started" | "not_started";
   enrollment_id: number;
   workflow_state: string;
   total_progress: number;

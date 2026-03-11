@@ -70,7 +70,7 @@ export default function AttendancePage() {
                   <TableRow>
                     <TableHead className="w-12">{t("colId")}</TableHead>
                     <TableHead>{t("colEventType")}</TableHead>
-                    <TableHead>{t("colUserId")}</TableHead>
+                    <TableHead>{t("colUserName")}</TableHead>
                     <TableHead>{t("colEnrollmentId")}</TableHead>
                     <TableHead>{t("colWorkflowState")}</TableHead>
                     <TableHead>{t("colProgress")}</TableHead>
@@ -89,14 +89,14 @@ export default function AttendancePage() {
                         </span>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {n.enrollment.aanaab_user_id}
+                        {n.user_name}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {n.enrollment.enrollment_id}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={workflowBadgeVariant(n.enrollment.workflow_state)}>
-                          {n.enrollment.workflow_state}
+                        <Badge variant={workflowBadgeVariant(n.enrollment.status)}>
+                          {n.enrollment.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
